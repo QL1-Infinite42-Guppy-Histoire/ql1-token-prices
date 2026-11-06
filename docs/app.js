@@ -90,15 +90,20 @@ function shortAddr(a) { return a ? a.slice(0, 6) + "…" + a.slice(-4) : ""; }
 
 /* ---------- RPC helpers ---------- */
 let rpcId = 0;
-async function rpcBatch(url, calls) {
+async function rpcBatchOnce(url, calls) {
   const start = rpcId;
   const payload = calls.map(([to, data]) => ({ jsonrpc: "2.0", id: ++rpcId, method: "eth_call", params: [{ to, data }, "latest"] }));
   const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
   if (!res.ok) throw new Error("RPC HTTP " + res.status);
   const out = await res.json();
+  if (!Array.isArray(out)) throw new Error("RPC batch response was not an array");
   const byId = {};
   for (const x of out) byId[x.id] = x.result || null;
   return calls.map((_, i) => byId[start + i + 1] || null);
+}
+async function rpcBatch(url, calls) {
+  try { return await rpcBatchOnce(url, calls); }
+  catch (e) { return await rpcBatchOnce(url, calls); } // one retry for transient RPC/network failures
 }
 async function rpcOne(url, to, data) { return (await rpcBatch(url, [[to, data]]))[0]; }
 async function rpcBlock(url) {
@@ -109,6 +114,16 @@ function encAddr(a) { return a.toLowerCase().replace("0x", "").padStart(64, "0")
 function encUint(n) { return n.toString(16).padStart(64, "0"); }
 function decUint(hex) { return hex && hex !== "0x" ? BigInt(hex) : null; }
 function decAddr(hex) { return hex && hex.length >= 42 ? "0x" + hex.slice(-40).toLowerCase() : null; }
+const ZERO_ADDR = "0x0000000000000000000000000000000000000000";
+/* getPair result: the zero address means "no such pair" — treat as null. */
+function decPair(hex) { const a = decAddr(hex); return a && a !== ZERO_ADDR ? a : null; }
+/* getReserves result -> [reserve0, reserve1] as BigInt, or null when the
+   call returned nothing / an empty "0x" (e.g. the target is not a pair). */
+function parseReservesRaw(raw) {
+  if (!raw || typeof raw !== "string" || raw.length < 130) return null;
+  try { return [BigInt("0x" + raw.slice(2, 66)), BigInt("0x" + raw.slice(66, 130))]; }
+  catch (e) { return null; }
+}
 function decStr(hex) {
   if (!hex || hex === "0x") return null;
   try {
@@ -215,15 +230,14 @@ async function fetchAnchors() {
   const pairsWanted = [[NATIVE_PH, USDT_INF], [QOM_INF, NATIVE_PH], [FISH_INF, USDT_INF], [FISH_INF, QOM_INF]];
   const pairAddrs = await rpcBatch(INF_RPC, pairsWanted.map(([a, b]) => [INF_FACTORY, SEL.getPair + encAddr(a) + encAddr(b)]));
   const calls = [];
-  for (const pa of pairAddrs) { calls.push([pa, SEL.token0], [pa, SEL.getReserves]); }
+  for (const pa of pairAddrs) { const d = decAddr(pa); calls.push([d, SEL.token0], [d, SEL.getReserves]); }
   const res = await rpcBatch(INF_RPC, calls);
   const info = pairsWanted.map((_, i) => {
-    const pair = decAddr(pairAddrs[i]); const t0 = decAddr(res[i * 2]); const raw = res[i * 2 + 1];
-    const r0 = bigToNum(BigInt("0x" + raw.slice(2, 66)), 18) || 0;
-    const r1 = bigToNum(BigInt("0x" + raw.slice(66, 130)), 18) || 0;
-    return { pair, t0, r0, r1 };
+    const pair = decPair(pairAddrs[i]); const t0 = decAddr(res[i * 2]);
+    const rr = parseReservesRaw(res[i * 2 + 1]);
+    if (!pair || !t0 || !rr) throw new Error("42 Chainのアンカープールを取得できませんでした");
+    return { pair, t0, r0: bigToNum(rr[0], 18) || 0, r1: bigToNum(rr[1], 18) || 0 };
   });
-  const priceOf = (p, addr) => (p.t0 === addr ? p.r1 / p.r0 : p.r0 / p.r1); // amount of the OTHER token per 1 addr... careful below
   // 42/USDT: price42 = USDT per 42
   const p42 = info[0]; const price42 = p42.t0 === USDT_INF ? p42.r0 / p42.r1 : p42.r1 / p42.r0;
   // QOM/42: QOM per 42
@@ -236,11 +250,13 @@ async function fetchAnchors() {
   return { price42, qomUsd, qomUsdViaFish, fishUsd };
 }
 async function fetchQl1Reference(qomUsd) {
-  const pa = decAddr(await rpcOne(QL1_RPC, QL1_FACTORY, SEL.getPair + encAddr(WQOM) + encAddr(QUSDT)));
+  const pa = decPair(await rpcOne(QL1_RPC, QL1_FACTORY, SEL.getPair + encAddr(WQOM) + encAddr(QUSDT)));
+  if (!pa) throw new Error("QL1のWQOM/qUSDTプールが見つかりませんでした");
   const res = await rpcBatch(QL1_RPC, [[pa, SEL.token0], [pa, SEL.getReserves]]);
-  const t0 = decAddr(res[0]); const raw = res[1];
-  const r0 = bigToNum(BigInt("0x" + raw.slice(2, 66)), t0 === WQOM ? 18 : 6) || 0;
-  const r1 = bigToNum(BigInt("0x" + raw.slice(66, 130)), t0 === WQOM ? 6 : 18) || 0;
+  const t0 = decAddr(res[0]); const rr = parseReservesRaw(res[1]);
+  if (!t0 || !rr) throw new Error("QL1のWQOM/qUSDTプールの残高を取得できませんでした");
+  const r0 = bigToNum(rr[0], t0 === WQOM ? 18 : 6) || 0;
+  const r1 = bigToNum(rr[1], t0 === WQOM ? 6 : 18) || 0;
   const qomQl1Pool = t0 === WQOM ? r1 / r0 : r0 / r1;
   return { qomQl1Pool, divergence: qomQl1Pool / qomUsd };
 }
@@ -278,16 +294,19 @@ async function loadLive() {
       const rs = await rpcBatch(QL1_RPC, c.map((i) => [QL1_FACTORY, SEL.allPairs + encUint(i)]));
       pairAddrs.push(...rs.map(decAddr));
     }
+    pairAddrs = pairAddrs.filter(Boolean);
     const pairs = [];
     for (const c of chunks(pairAddrs, 50)) {
       const calls = [];
       for (const p of c) calls.push([p, SEL.token0], [p, SEL.token1], [p, SEL.getReserves], [p, SEL.totalSupply]);
       const rs = await rpcBatch(QL1_RPC, calls);
       c.forEach((p, i) => {
-        const raw = rs[i * 4 + 2];
+        const t0 = decAddr(rs[i * 4]), t1 = decAddr(rs[i * 4 + 1]);
+        const rr = parseReservesRaw(rs[i * 4 + 2]);
+        if (!p || !t0 || !t1 || !rr) return; // skip pairs whose reads failed; never crash the whole load
         pairs.push({
-          pair: p, token0: decAddr(rs[i * 4]), token1: decAddr(rs[i * 4 + 1]),
-          reserve0: raw ? BigInt("0x" + raw.slice(2, 66)) : 0n, reserve1: raw ? BigInt("0x" + raw.slice(66, 130)) : 0n,
+          pair: p, token0: t0, token1: t1,
+          reserve0: rr[0], reserve1: rr[1],
           lpSupplyRaw: decUint(rs[i * 4 + 3]),
         });
       });
@@ -485,10 +504,11 @@ async function lookupToken(address) {
   // LP pair itself?
   const maybeT0 = decAddr(metaRes[4]); const maybeT1 = decAddr(metaRes[5]);
   if (maybeT0 && maybeT1) {
-    const pairCheck = decAddr(await rpcOne(QL1_RPC, QL1_FACTORY, SEL.getPair + encAddr(maybeT0) + encAddr(maybeT1)));
+    const pairCheck = decPair(await rpcOne(QL1_RPC, QL1_FACTORY, SEL.getPair + encAddr(maybeT0) + encAddr(maybeT1)));
     if (pairCheck === addr) {
-      const raw = await rpcOne(QL1_RPC, addr, SEL.getReserves);
-      if (raw) {
+      const lpRes = parseReservesRaw(await rpcOne(QL1_RPC, addr, SEL.getReserves));
+      if (lpRes) {
+        const raw = lpRes;
         const metaOf = async (a) => {
           const t = priceMap.get(a);
           if (t) return t;
@@ -496,8 +516,8 @@ async function lookupToken(address) {
           return { decimals: d ? Number(decUint(d)) : 18, priceUsd: null };
         };
         const m0 = await metaOf(maybeT0); const m1 = await metaOf(maybeT1);
-        const r0 = bigToNum(BigInt("0x" + raw.slice(2, 66)), m0.decimals || 18) || 0;
-        const r1 = bigToNum(BigInt("0x" + raw.slice(66, 130)), m1.decimals || 18) || 0;
+        const r0 = bigToNum(raw[0], m0.decimals || 18) || 0;
+        const r1 = bigToNum(raw[1], m1.decimals || 18) || 0;
         base.isLP = true;
         if (m0.priceUsd != null && m1.priceUsd != null && totalSupply) {
           const val = r0 * m0.priceUsd + r1 * m1.priceUsd;
@@ -516,20 +536,20 @@ async function lookupToken(address) {
   const quoteAddrs = QUOTE_CANDIDATES.filter((q) => q !== addr);
   const pairRes = await rpcBatch(QL1_RPC, quoteAddrs.map((q) => [QL1_FACTORY, SEL.getPair + encAddr(addr) + encAddr(q)]));
   const existing = [];
-  pairRes.forEach((r, i) => { const p = decAddr(r); if (p) existing.push({ pair: p, quote: quoteAddrs[i] }); });
+  pairRes.forEach((r, i) => { const p = decPair(r); if (p) existing.push({ pair: p, quote: quoteAddrs[i] }); });
   if (existing.length) {
     const calls = [];
     for (const e of existing) calls.push([e.pair, SEL.token0], [e.pair, SEL.getReserves]);
     const rs = await rpcBatch(QL1_RPC, calls);
     const cands = [];
     existing.forEach((e, i) => {
-      const t0 = decAddr(rs[i * 2]); const raw = rs[i * 2 + 1];
-      if (!raw) return;
+      const t0 = decAddr(rs[i * 2]); const rr = parseReservesRaw(rs[i * 2 + 1]);
+      if (!t0 || !rr) return;
       const quoteIs0 = t0 === e.quote;
       const quoteToken = priceMap.get(e.quote);
       const quoteDec = quoteToken ? quoteToken.decimals : 18;
-      const rQuote = bigToNum(BigInt("0x" + (quoteIs0 ? raw.slice(2, 66) : raw.slice(66, 130))), quoteDec) || 0;
-      const rTok = bigToNum(BigInt("0x" + (quoteIs0 ? raw.slice(66, 130) : raw.slice(2, 66))), dec) || 0;
+      const rQuote = bigToNum(quoteIs0 ? rr[0] : rr[1], quoteDec) || 0;
+      const rTok = bigToNum(quoteIs0 ? rr[1] : rr[0], dec) || 0;
       if (!quoteToken || quoteToken.priceUsd == null || rQuote <= 0 || rTok <= 0) return;
       const liq = rQuote * quoteToken.priceUsd;
       cands.push({ usd: quoteToken.priceUsd * rQuote / rTok, liq, pair: e.pair, via: quoteToken.symbol, reserveKnown: rQuote, reserveToken: rTok });
