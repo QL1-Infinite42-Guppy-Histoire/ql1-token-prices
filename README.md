@@ -1,5 +1,7 @@
 # QL1トークン価格・時価総額（Infiniteアンカー）
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 QL1 の全トークンの価格と時価総額を、**42 Chain（Infinite）側で追跡した QOM 価格**を基準に表示する静的サイト。
 
 **公開サイト:** https://ql1-infinite42-guppy-histoire.github.io/ql1-token-prices/
@@ -41,3 +43,7 @@ QL1: evm-rpc-ql1.mschihuahua.org、保有者数: scan.qom.network Blockscout API
 スナップショットの再生成: `python3 tools/generate_snapshot.py docs/snapshot.json`
 
 価格はプール比率からの推定値で、約定価格の保証ではない。
+
+## ライセンス
+
+MIT License（[LICENSE](LICENSE)）。オープンソースとして公開しています。自由に使って、直して、配って大丈夫です。
