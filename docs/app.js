@@ -406,9 +406,9 @@ function tokenRowHtml(t, idx) {
     '<td class="num">' + (t.liqUsd != null ? fmtMoney(t.liqUsd) : "基準") + "</td>" +
     "<td>" + esc(t.route || "") + "</td></tr>";
 }
-function detailRowHtml(t) {
+function detailLines(t) {
   const a = DATA.anchors;
-  let lines = [];
+  const lines = [];
   lines.push("アドレス: " + t.address + '　<a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">エクスプローラーで開く</a>');
   if (t.pair) lines.push("プール: " + t.pair + '　<a href="' + SCAN + "/address/" + t.pair + '" target="_blank" rel="noopener">プールを開く</a>');
   if (t.reserveKnown != null && t.reserveToken != null) lines.push("プール残高: " + fmtNum(t.reserveToken) + " " + esc(t.symbol) + " / " + fmtNum(t.reserveKnown) + " " + esc(t.via || "") + "（基準側）");
@@ -418,8 +418,67 @@ function detailRowHtml(t) {
   }
   if (t.isLP) lines.push("これは QomSwap のLPトークンです。価格はプールの裏付け資産合計 ÷ LP総供給量で計算しています。");
   if (tracked.has(t.address)) lines.push("📌 追跡中です（上の追跡リストで管理できます）");
-  else lines.push('<a href="#" class="addFromDetail" data-addr="' + t.address + '">📌 このトークンを追跡に追加</a>');
-  return '<tr class="detail"><td colspan="9">' + lines.join("<br>") + "</td></tr>";
+  return lines;
+}
+
+/* ---------- converter (token / USD / QOM) ---------- */
+let convAddr = null;
+function fmtInput(v) {
+  if (v == null || !isFinite(v)) return "";
+  if (v === 0) return "0";
+  const s = v.toPrecision(10);
+  if (/e/i.test(s)) return Number(s).toFixed(20).replace(/0+$/, "").replace(/\.$/, "");
+  return String(parseFloat(s));
+}
+function openConverter(addr) {
+  const t = priceMap.get(addr) || customMeta.get(addr);
+  if (!t || t.priceUsd == null || !DATA || !DATA.anchors || !DATA.anchors.qomUsd) return;
+  convAddr = addr;
+  document.getElementById("convTitle").innerHTML =
+    (t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" onerror="this.remove()">' : "") +
+    esc(t.symbol || "?") + ' <span class="conv-name">' + esc(t.name || "") + "</span>";
+  document.getElementById("convSymLabel").textContent = (t.symbol || "トークン") + " の量";
+  const qomPrice = t.priceUsd / DATA.anchors.qomUsd;
+  document.getElementById("convPriceLine").innerHTML =
+    "1 " + esc(t.symbol || "") + " = <b>" + fmtPrice(t.priceUsd) + "</b> ／ <b>" + fmtNum(qomPrice) + " QOM</b><br>" +
+    "時価総額: " + fmtMoney(t.mcap) + " ／ 流動性: " + (t.liqUsd != null ? fmtMoney(t.liqUsd) : "—");
+  document.getElementById("convRate").textContent =
+    "換算レート: 1 QOM = " + fmtPrice(DATA.anchors.qomUsd) + "（このサイトの基準）";
+  document.getElementById("convDetail").innerHTML = detailLines(t).join("<br>");
+  updateConvTrackBtn();
+  const amt = tracked.get(addr);
+  document.getElementById("convToken").value = amt ? amt : "1";
+  convUpdate("token");
+  document.getElementById("convOverlay").style.display = "";
+}
+function closeConverter() {
+  document.getElementById("convOverlay").style.display = "none";
+  convAddr = null;
+}
+function updateConvTrackBtn() {
+  document.getElementById("convTrackBtn").textContent =
+    convAddr && tracked.has(convAddr) ? "📌 追跡を外す" : "📌 追跡に追加";
+}
+function convUpdate(from) {
+  const t = convAddr ? (priceMap.get(convAddr) || customMeta.get(convAddr)) : null;
+  if (!t || t.priceUsd == null || !DATA || !DATA.anchors || !DATA.anchors.qomUsd) return;
+  const qomUsd = DATA.anchors.qomUsd;
+  const elT = document.getElementById("convToken");
+  const elU = document.getElementById("convUsd");
+  const elQ = document.getElementById("convQom");
+  const src = from === "token" ? elT : from === "usd" ? elU : elQ;
+  const v = parseFloat(src.value);
+  if (src.value === "" || isNaN(v)) {
+    [elT, elU, elQ].forEach((e) => { if (e !== src) e.value = ""; });
+    return;
+  }
+  let usd;
+  if (from === "token") usd = v * t.priceUsd;
+  else if (from === "usd") usd = v;
+  else usd = v * qomUsd;
+  if (from !== "token") elT.value = fmtInput(usd / t.priceUsd);
+  if (from !== "usd") elU.value = fmtInput(usd);
+  if (from !== "qom") elQ.value = fmtInput(usd / qomUsd);
 }
 function currentFilter() {
   const q = document.getElementById("searchBox").value.trim().toLowerCase();
@@ -448,18 +507,9 @@ function renderTable() {
   const body = document.getElementById("tokenBody");
   body.innerHTML = rows.map((t, i) => tokenRowHtml(t, i)).join("");
   document.getElementById("countLine").textContent =
-    "価格あり " + DATA.tokens.length + " 件中 " + rows.length + " 件を表示（プール総数 " + (DATA.stats ? DATA.stats.ql1Pairs : "—") + "）";
+    "価格あり " + DATA.tokens.length + " 件中 " + rows.length + " 件を表示（プール総数 " + (DATA.stats ? DATA.stats.ql1Pairs : "—") + "）。トークンをタップすると換算コンバータが開きます";
   body.querySelectorAll("tr.tok").forEach((tr) => {
-    tr.addEventListener("click", () => {
-      const addr = tr.dataset.addr;
-      const next = tr.nextElementSibling;
-      if (next && next.classList.contains("detail")) { next.remove(); return; }
-      body.querySelectorAll("tr.detail").forEach((d) => d.remove());
-      const t = priceMap.get(addr);
-      if (t) tr.insertAdjacentHTML("afterend", detailRowHtml(t));
-      const link = body.querySelector(".addFromDetail");
-      if (link) link.addEventListener("click", (ev) => { ev.preventDefault(); addTracked(link.dataset.addr); document.getElementById("caInput").scrollIntoView({ behavior: "smooth" }); });
-    });
+    tr.addEventListener("click", () => openConverter(tr.dataset.addr));
   });
 }
 function renderUnpriced() {
@@ -638,10 +688,13 @@ function renderTracked() {
     '<a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></div>" +
     '<label class="t-line">保有量<input class="amount" type="number" min="0" step="any" placeholder="保有量を入力" value="' + esc(amount) + '"></label>' +
     '<div class="t-value">' + (value != null ? "評価額: " + fmtMoney(value) + "（" + fmtFull(value) + "）" : "") + "</div>" +
+    (t.priceUsd != null ? '<button type="button" class="t-conv">⇄ 換算（ドル／QOM）</button>' : "") +
     '<button type="button" class="t-remove">追跡を外す</button>' +
     "</div>").join("");
   cards.querySelectorAll(".tcard").forEach((card) => {
     const addr = card.dataset.addr;
+    const convBtn = card.querySelector(".t-conv");
+    if (convBtn) convBtn.addEventListener("click", () => openConverter(addr));
     card.querySelector(".t-remove").addEventListener("click", () => {
       removeTracked(addr);
       document.getElementById("shareMsg").textContent = "追跡から外しました: " + addr;
@@ -801,6 +854,19 @@ function bindControls() {
     copyText(buildShareUrl(true), document.getElementById("shareMsg"), "ポートフォリオ（保有量つき）のリンクをコピーしました"));
   document.getElementById("shareXBtn").addEventListener("click", openXShare);
   document.getElementById("shareImgBtn").addEventListener("click", shareImage);
+  document.getElementById("convToken").addEventListener("input", () => convUpdate("token"));
+  document.getElementById("convUsd").addEventListener("input", () => convUpdate("usd"));
+  document.getElementById("convQom").addEventListener("input", () => convUpdate("qom"));
+  document.getElementById("convClose").addEventListener("click", closeConverter);
+  document.getElementById("convOverlay").addEventListener("click", (e) => {
+    if (e.target === document.getElementById("convOverlay")) closeConverter();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeConverter(); });
+  document.getElementById("convTrackBtn").addEventListener("click", () => {
+    if (!convAddr) return;
+    if (tracked.has(convAddr)) removeTracked(convAddr); else addTracked(convAddr);
+    updateConvTrackBtn();
+  });
 }
 (async function init() {
   loadLocal();

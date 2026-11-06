@@ -129,6 +129,35 @@
   このサイトの価格はプールの比率から計算した推定値で、取引の約定価格を保証しません。</p>
 </footer>
 
+<div id="convOverlay" class="conv-overlay" style="display:none">
+  <div class="conv-sheet">
+    <div class="conv-head">
+      <div id="convTitle" class="conv-title"></div>
+      <button id="convClose" type="button" class="conv-close" aria-label="閉じる">✕</button>
+    </div>
+    <div id="convPriceLine" class="conv-price-line"></div>
+    <div class="conv-fields">
+      <label><span id="convSymLabel">トークンの量</span>
+        <input id="convToken" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+      <div class="conv-eq">＝</div>
+      <label><span>ドル (USD)</span>
+        <input id="convUsd" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+      <div class="conv-eq">＝</div>
+      <label><span>QOM</span>
+        <input id="convQom" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+    </div>
+    <p class="conv-hint">どの欄に入力しても、他の2つが自動で換算されます。ドルとQOM、両方の見方で比べられます。</p>
+    <div id="convRate" class="conv-rate"></div>
+    <div id="convDetail" class="conv-detail"></div>
+    <div class="conv-actions">
+      <button id="convTrackBtn" type="button">📌 追跡に追加</button>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
 </body>
 </html>
