@@ -396,15 +396,15 @@ function tokenRowHtml(t, idx) {
     (t.diverge ? '<span class="badge div">⚠ルート乖離</span>' : "") +
     (t.liqUsd != null && t.liqUsd < 50 ? '<span class="badge lowliq">流動性小</span>' : "");
   const icon = t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" loading="lazy" onerror="this.remove()">' : "";
-  return '<tr class="tok" data-addr="' + t.address + '"><td>' + (idx + 1) + "</td>" +
-    "<td>" + icon + '<span class="sym">' + esc(t.symbol) + "</span>" + badges + '<br><span class="tname">' + esc(t.name) + "</span></td>" +
-    '<td class="num" title="' + fmtFull(t.priceUsd) + '">' + fmtPrice(t.priceUsd) + "</td>" +
-    '<td class="num">' + fmtNum(t.priceQom) + " QOM</td>" +
-    '<td class="num">' + fmtMoney(t.mcap) + "</td>" +
-    '<td class="num">' + fmtNum(t.totalSupply) + "</td>" +
-    '<td class="num">' + (t.holders != null ? t.holders.toLocaleString() : "—") + "</td>" +
-    '<td class="num">' + (t.liqUsd != null ? fmtMoney(t.liqUsd) : "基準") + "</td>" +
-    "<td>" + esc(t.route || "") + "</td></tr>";
+  return '<tr class="tok" data-addr="' + t.address + '"><td class="rank">' + (idx + 1) + "</td>" +
+    '<td class="tok-head">' + icon + '<span class="sym">' + esc(t.symbol) + "</span>" + badges + '<br><span class="tname">' + esc(t.name) + "</span></td>" +
+    '<td class="num" data-label="価格 (USD)" title="' + fmtFull(t.priceUsd) + '">' + fmtPrice(t.priceUsd) + "</td>" +
+    '<td class="num" data-label="価格 (QOM)">' + fmtNum(t.priceQom) + " QOM</td>" +
+    '<td class="num" data-label="時価総額">' + fmtMoney(t.mcap) + "</td>" +
+    '<td class="num" data-label="総供給量">' + fmtNum(t.totalSupply) + "</td>" +
+    '<td class="num" data-label="保有者">' + (t.holders != null ? t.holders.toLocaleString() : "—") + "</td>" +
+    '<td class="num" data-label="プール流動性（基準側）">' + (t.liqUsd != null ? fmtMoney(t.liqUsd) : "基準") + "</td>" +
+    '<td data-label="算出ルート">' + esc(t.route || "") + "</td></tr>";
 }
 function detailLines(t) {
   const a = DATA.anchors;

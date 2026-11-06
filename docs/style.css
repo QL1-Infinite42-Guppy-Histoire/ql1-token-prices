@@ -77,3 +77,20 @@ tr.tok { cursor: pointer; }
 .conv-detail a { color: #8fd0ff; }
 .conv-actions { display: flex; gap: 10px; margin-top: 16px; align-items: center; }
 .t-conv { margin-top: 8px; margin-right: 6px; }
+
+/* ---------- mobile: token table becomes labelled cards ---------- */
+@media (max-width: 760px) {
+  #tokenTable { min-width: 0; font-size: 13px; }
+  #tokenTable thead { display: none; }
+  #tokenTable, #tokenTable tbody, #tokenTable tr, #tokenTable td { display: block; width: 100%; }
+  #tokenTable tr.tok { padding: 10px 2px 12px; border-bottom: 2px solid #26314a; }
+  #tokenTable td { border-bottom: 0; padding: 3px 4px; }
+  #tokenTable td.rank { display: none; }
+  #tokenTable td.tok-head { padding-bottom: 5px; }
+  #tokenTable td.num, #tokenTable td[data-label="算出ルート"] {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  }
+  #tokenTable td.num::before, #tokenTable td[data-label="算出ルート"]::before {
+    content: attr(data-label); color: #8d99ae; font-size: 11px; text-align: left; white-space: nowrap;
+  }
+}
