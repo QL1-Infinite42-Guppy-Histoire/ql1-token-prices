@@ -1,0 +1,59 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; background: #0f1420; color: #e8ecf3; }
+header { padding: 20px 16px 8px; max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 22px; margin: 0 0 6px; }
+.sub { color: #aab4c4; margin: 0 0 8px; line-height: 1.5; }
+.status { color: #8fd0ff; font-size: 13px; min-height: 18px; }
+button { background: #2470d8; color: #fff; border: 0; border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; }
+button:disabled { opacity: .5; }
+.panel { background: #171e2e; border: 1px solid #26314a; border-radius: 12px; padding: 14px 16px; margin: 12px auto; max-width: 1100px; width: calc(100% - 24px); }
+.panel h2 { font-size: 16px; margin: 0 0 10px; }
+.anchor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.anchor-card { background: #1e2740; border-radius: 10px; padding: 12px; }
+.anchor-card.main { border: 1px solid #2470d8; }
+.anchor-card.warn { border: 1px solid #8a6d1f; }
+.a-label { font-size: 12px; color: #aab4c4; margin-bottom: 6px; }
+.a-value { font-size: 19px; font-weight: 700; word-break: break-all; }
+.a-note { font-size: 12px; color: #8d99ae; margin-top: 6px; line-height: 1.45; }
+.method { margin-top: 10px; }
+.method summary, #unpricedDetails summary { cursor: pointer; color: #8fd0ff; }
+.method ul { color: #c3cad7; line-height: 1.65; font-size: 13px; padding-left: 18px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.controls input[type="search"] { flex: 1 1 200px; padding: 9px 10px; border-radius: 8px; border: 1px solid #33415e; background: #0f1420; color: #fff; font-size: 14px; }
+.controls select { padding: 8px; border-radius: 8px; border: 1px solid #33415e; background: #0f1420; color: #fff; }
+.count { color: #8d99ae; font-size: 13px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 880px; }
+th, td { padding: 8px 8px; border-bottom: 1px solid #26314a; text-align: left; vertical-align: top; }
+th { color: #aab4c4; font-weight: 600; cursor: pointer; white-space: nowrap; position: sticky; top: 0; background: #171e2e; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.tok { cursor: pointer; }
+tr.tok:hover { background: #1b2438; }
+.sym { font-weight: 700; color: #fff; }
+.tname { color: #8d99ae; font-size: 12px; }
+.badge { display: inline-block; font-size: 11px; border-radius: 6px; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+.badge.lp { background: #3a2d5c; color: #cdbcf7; }
+.badge.div { background: #6b5510; color: #ffd94d; }
+.badge.lowliq { background: #5c2d2d; color: #ffb3b3; }
+.detail td { background: #121828; color: #c3cad7; font-size: 12px; line-height: 1.7; }
+.detail a, td a { color: #8fd0ff; }
+a { color: #8fd0ff; }
+footer { max-width: 1100px; margin: 0 auto; padding: 4px 16px 28px; color: #8d99ae; font-size: 12px; line-height: 1.6; }
+img.icon { width: 20px; height: 20px; border-radius: 50%; vertical-align: middle; margin-right: 6px; background: #fff; }
+.ca-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.ca-row input { flex: 1 1 260px; padding: 10px; border-radius: 8px; border: 1px solid #33415e; background: #0f1420; color: #fff; font-size: 14px; font-family: ui-monospace, monospace; }
+.tracked-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-top: 8px; }
+.tcard { background: #1e2740; border: 1px solid #2470d8; border-radius: 10px; padding: 12px; }
+.tcard .t-sym { font-size: 16px; font-weight: 700; }
+.tcard .t-price { font-size: 18px; font-weight: 700; margin: 6px 0 2px; }
+.tcard .t-line { font-size: 12px; color: #aab4c4; line-height: 1.6; }
+.tcard .t-remove { margin-top: 8px; background: #5c2d2d; }
+.tcard .t-remove:hover { background: #7a3a3a; }
+.portfolio-bar { background: #14263f; border: 1px solid #2470d8; border-radius: 8px; padding: 10px 12px; margin: 8px 0; font-size: 14px; }
+.share-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.share-row button { background: #2b3c5f; }
+.share-row button:hover { background: #37507e; }
+.tcard input.amount { width: 100%; margin-top: 6px; padding: 8px; border-radius: 8px; border: 1px solid #33415e; background: #0f1420; color: #fff; font-size: 14px; }
+.tcard .t-value { font-size: 13px; color: #8fd0ff; margin-top: 4px; }
+.flash { animation: flashBg 1.6s ease-out; }
+@keyframes flashBg { 0% { background: #2b4a7d; } 100% { background: transparent; } }
