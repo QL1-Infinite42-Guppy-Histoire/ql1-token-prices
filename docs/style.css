@@ -1,7 +1,11 @@
 * { box-sizing: border-box; }
 body { margin: 0; font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; background: #0f1420; color: #e8ecf3; }
-header { padding: 20px 16px 8px; max-width: 1100px; margin: 0 auto; }
-h1 { font-size: 22px; margin: 0 0 6px; }
+header { padding: 20px 16px 8px; max-width: 1100px; margin: 0 auto; position: relative; }
+h1 { font-size: 22px; margin: 0 0 6px; padding-right: 170px; }
+/* language selector: top-right of the header (same look as the DEX aggregator) */
+.lang-switch { position: absolute; top: 20px; right: 16px; font-size: 13px; color: #aab4c4; }
+.lang-switch select { margin-left: 4px; background: #10182b; color: #e8eefc; border: 1px solid #2b3857; border-radius: 6px; padding: 2px 6px; font-size: 13px; }
+@media (max-width: 560px) { .lang-switch { top: 18px; right: 12px; } h1 { padding-right: 150px; } }
 .sub { color: #aab4c4; margin: 0 0 8px; line-height: 1.5; }
 .status { color: #8fd0ff; font-size: 13px; min-height: 18px; }
 button { background: #2470d8; color: #fff; border: 0; border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; }
@@ -87,10 +91,10 @@ tr.tok { cursor: pointer; }
   #tokenTable td { border-bottom: 0; padding: 3px 4px; }
   #tokenTable td.rank { display: none; }
   #tokenTable td.tok-head { padding-bottom: 5px; }
-  #tokenTable td.num, #tokenTable td[data-label="算出ルート"] {
+  #tokenTable td.num, #tokenTable td.routecell {
     display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
   }
-  #tokenTable td.num::before, #tokenTable td[data-label="算出ルート"]::before {
+  #tokenTable td.num::before, #tokenTable td.routecell::before {
     content: attr(data-label); color: #8d99ae; font-size: 11px; text-align: left; white-space: nowrap;
   }
 }

@@ -33,6 +33,182 @@ const QUOTE_CANDIDATES = [WQOM, QUSDT, QUSDC, QDAI,
   "0x4af41f453ead00d1cc6aa0b5b454bdeb102afc8d", /* QSWAP */
 ];
 
+/* ---------- i18n (same scheme as the DEX aggregator: language comes from
+   the page's lang attribute; index.html is the gate, ja.html / en.html are
+   the language pages; the header selector stores ql1prices_lang) ---------- */
+const LANG = (typeof document !== "undefined" && document.documentElement && (document.documentElement.lang || "").toLowerCase().indexOf("en") === 0) ? "en" : "ja";
+const STR = {
+  ja: {
+    anchorInfinite: "Infiniteアンカー", anchorFixed: "$1固定", hop2Label: "2段",
+    routeToAnchorSuffix: "→…→アンカー", viaAnchor: "アンカー",
+    lpBacked: (a, b) => "LP裏付け (" + a + "/" + b + ")",
+    errAnchorPool: "42 Chainのアンカープールを取得できませんでした",
+    errQl1PoolMissing: "QL1のWQOM/qUSDTプールが見つかりませんでした",
+    errQl1PoolReserves: "QL1のWQOM/qUSDTプールの残高を取得できませんでした",
+    statusAnchor: "42 Chain からQOM価格アンカーを取得中…",
+    statusPairs: "QL1 のプールを全件取得中…（645ペア）",
+    statusMeta: "トークン情報を取得中…", statusHolders: "保有者数を取得中…",
+    statusLive: (a, b) => "ライブデータ表示中（42 Chain #" + a + " / QL1 #" + b + "）",
+    statusLiveFail: (m) => "ライブ取得に失敗しました（スナップショットを表示しています）: " + m,
+    statusSnapshot: (d) => "スナップショット表示中（" + d + " 時点）— ライブ取得を試みています…",
+    statusSnapshotFail: "スナップショットが読めませんでした。ライブ取得を試みます…",
+    fishNote: (p) => "FISH経由の逆算と " + p + "% 差（小さいほどアンカーが安定）",
+    divNote: (x) => "このサイトの基準の " + x + " 倍。Ave.ai はこちらのプール価格で全トークンを計算するため、実勢とズレます。",
+    badgeDiverge: "⚠ルート乖離", badgeDivergeShort: "⚠乖離", badgeLowLiq: "流動性小",
+    colPriceUsd: "価格 (USD)", colPriceQom: "価格 (QOM)", colMcap: "時価総額", colSupply: "総供給量",
+    colHolders: "保有者", colLiq: "プール流動性（基準側）", colRoute: "算出ルート", liqAnchor: "基準",
+    detailAddress: "アドレス: ", detailOpenExplorer: "エクスプローラーで開く",
+    detailPool: "プール: ", detailOpenPool: "プールを開く",
+    detailReserves: (amt, sym, amt2, via) => "プール残高: " + amt + " " + sym + " / " + amt2 + " " + via + "（基準側）",
+    detailAve: (p, x) => "Ave.ai方式で計算すると: " + p + "（QL1プールのQOM価格を使うため " + x + " 倍）",
+    detailDivergeHead: "⚠ ルート乖離の内訳: ",
+    detailDivergeItem: (via, p, liq) => via + "経由 " + p + "（流動性 " + liq + "）",
+    detailLp: "これは QomSwap のLPトークンです。価格はプールの裏付け資産合計 ÷ LP総供給量で計算しています。",
+    detailTracked: "📌 追跡中です（上の追跡リストで管理できます）",
+    convAmountOf: (s) => s + " の量",
+    convMcapLiq: (m, l) => "時価総額: " + m + " ／ 流動性: " + l,
+    convRate: (p) => "換算レート: 1 QOM = " + p + "（このサイトの基準）",
+    convTrackAdd: "📌 追跡に追加", convTrackRemove: "📌 追跡を外す",
+    countLine: (total, shown, pairs) => "価格あり " + total + " 件中 " + shown + " 件を表示（プール総数 " + pairs + "）。トークンをタップすると換算コンバータが開きます",
+    unpricedSummary: (n) => "価格なしのトークン（" + n + "件）", trackLink: "📌追跡",
+    errNotErc20: "ERC-20トークンとして読み取れませんでした（アドレスが違うか、QL1上のトークンではない可能性があります）",
+    routeLpBackedLookup: "LP裏付け（プール資産合計÷LP供給量）",
+    routeLpNoPrice: "LPトークン（裏付け側の価格が無いため価格なし）",
+    routeCaSuffix: "（CA検索）",
+    routeLowLiq: "プールはあるが流動性が $0.5 未満のため価格なし",
+    routeQuoteNoPrice: "プールの相手側トークンに価格が無いため価格なし",
+    routeNoPool: "QomSwap にプールが見つかりません（価格なし）",
+    loadingSym: "読込中…",
+    pfTotalEmpty: "—（保有量を入れると計算します）",
+    pfDetail: (n, qom) => "（" + n + "件の評価額合計 / QOM換算 " + qom + " QOM）",
+    pfUnpriced: (n) => " ※価格なし " + n + " 件は含みません",
+    cardNoPrice: "価格なし", cardMcapLiq: (m, l) => "時価総額: " + m + " / 流動性: " + l,
+    cardAmountLabel: "保有量", cardAmountPh: "保有量を入力",
+    cardValue: (v, f) => "評価額: " + v + "（" + f + "）",
+    cardConvBtn: "⇄ 換算（ドル／QOM）", cardRemoveBtn: "追跡を外す",
+    removedMsg: (a) => "追跡から外しました: " + a,
+    copyFail: (u) => "コピーできませんでした。リンク: " + u,
+    xShareTitle: "QL1ポートフォリオ", xShareTotal: (v) => "QL1ポートフォリオ 合計 " + v,
+    xShareNote: "（価格はInfinite側QOMアンカー基準）",
+    imgBasis: (p) => "価格基準: 42 Chain（Infinite）側 QOM = " + p,
+    imgTotal: (v) => "合計 " + v, imgNoPrice: "価格なし",
+    msgLoadingData: "データを読み込み中です",
+    msgImgFail: "画像の生成に失敗しました", msgShareOpened: "共有シートを開きました",
+    msgImgDownloaded: "画像をダウンロードしました。SNSに添付して投稿できます",
+    importMsg: (n) => "共有リストを取り込みました（" + n + "件を追跡に追加）",
+    caLoadingData: "データを読み込み中です。少し待ってからもう一度試してください",
+    caBadAddress: "アドレスの形式が違います（0x + 40文字の16進数）",
+    caReading: (a) => "チェーンから読み取り中… " + a,
+    caAdded: (s, p, m) => "追跡に追加しました: " + s + " " + p + " / 時価総額 " + m,
+    caAddedNoPrice: (s, r) => "追跡に追加しました: " + s + "（価格なし: " + r + "）",
+    caReadFail: (m) => "読み取れませんでした: " + m,
+    shareWatchOk: "ウォッチリストのリンクをコピーしました。友達が開くと、同じリストがその人の画面に取り込まれます",
+    sharePfOk: "ポートフォリオ（保有量つき）のリンクをコピーしました",
+  },
+  en: {
+    anchorInfinite: "Infinite anchor", anchorFixed: "$1 fixed", hop2Label: "2-hop",
+    routeToAnchorSuffix: "→…→anchor", viaAnchor: "anchor",
+    lpBacked: (a, b) => "LP-backed (" + a + "/" + b + ")",
+    errAnchorPool: "Could not fetch the anchor pools on 42 Chain",
+    errQl1PoolMissing: "WQOM/qUSDT pool not found on QL1",
+    errQl1PoolReserves: "Could not fetch reserves of the QL1 WQOM/qUSDT pool",
+    statusAnchor: "Fetching the QOM price anchor from 42 Chain…",
+    statusPairs: "Fetching all QL1 pools… (645 pairs)",
+    statusMeta: "Fetching token metadata…", statusHolders: "Fetching holder counts…",
+    statusLive: (a, b) => "Live data (42 Chain #" + a + " / QL1 #" + b + ")",
+    statusLiveFail: (m) => "Live fetch failed (showing the snapshot): " + m,
+    statusSnapshot: (d) => "Showing a snapshot (as of " + d + ") — trying live data…",
+    statusSnapshotFail: "Could not load the snapshot. Trying live data…",
+    fishNote: (p) => p + "% away from the FISH cross-check (smaller = more stable anchor)",
+    divNote: (x) => x + "× this site's anchor. Ave.ai prices every token off this pool, so its figures drift from the market.",
+    badgeDiverge: "⚠ Route divergence", badgeDivergeShort: "⚠ Diverged", badgeLowLiq: "Low liquidity",
+    colPriceUsd: "Price (USD)", colPriceQom: "Price (QOM)", colMcap: "Market cap", colSupply: "Total supply",
+    colHolders: "Holders", colLiq: "Pool liquidity (anchor side)", colRoute: "Route", liqAnchor: "anchor",
+    detailAddress: "Address: ", detailOpenExplorer: "Open in explorer",
+    detailPool: "Pool: ", detailOpenPool: "Open pool",
+    detailReserves: (amt, sym, amt2, via) => "Pool reserves: " + amt + " " + sym + " / " + amt2 + " " + via + " (anchor side)",
+    detailAve: (p, x) => "Priced the Ave.ai way: " + p + " (" + x + "×, because it uses the QL1 pool's QOM price)",
+    detailDivergeHead: "⚠ Route divergence breakdown: ",
+    detailDivergeItem: (via, p, liq) => "via " + via + " " + p + " (liquidity " + liq + ")",
+    detailLp: "This is a QomSwap LP token. Its price is the pool's total backing value divided by the LP total supply.",
+    detailTracked: "📌 Tracked (manage it in the tracking list above)",
+    convAmountOf: (s) => "Amount of " + s,
+    convMcapLiq: (m, l) => "Market cap: " + m + " / Liquidity: " + l,
+    convRate: (p) => "Rate: 1 QOM = " + p + " (this site's anchor)",
+    convTrackAdd: "📌 Add to tracking", convTrackRemove: "📌 Remove from tracking",
+    countLine: (total, shown, pairs) => "Showing " + shown + " of " + total + " priced tokens (" + pairs + " pools total). Tap a token to open the converter",
+    unpricedSummary: (n) => "Tokens without a price (" + n + ")", trackLink: "📌Track",
+    errNotErc20: "Could not read it as an ERC-20 token (wrong address, or not a token on QL1)",
+    routeLpBackedLookup: "LP-backed (pool assets ÷ LP supply)",
+    routeLpNoPrice: "LP token (no price: an underlying token is unpriced)",
+    routeCaSuffix: " (CA lookup)",
+    routeLowLiq: "Pool exists but liquidity is under $0.5 — no price",
+    routeQuoteNoPrice: "Counterparty token has no price — no price",
+    routeNoPool: "No QomSwap pool found (no price)",
+    loadingSym: "Loading…",
+    pfTotalEmpty: "— (enter holdings to calculate)",
+    pfDetail: (n, qom) => "(" + n + " valued holdings / " + qom + " QOM)",
+    pfUnpriced: (n) => " *excludes " + n + " unpriced",
+    cardNoPrice: "No price", cardMcapLiq: (m, l) => "Market cap: " + m + " / Liquidity: " + l,
+    cardAmountLabel: "Holdings", cardAmountPh: "Enter amount held",
+    cardValue: (v, f) => "Value: " + v + " (" + f + ")",
+    cardConvBtn: "⇄ Convert (USD / QOM)", cardRemoveBtn: "Remove from tracking",
+    removedMsg: (a) => "Removed from tracking: " + a,
+    copyFail: (u) => "Could not copy. Link: " + u,
+    xShareTitle: "QL1 Portfolio", xShareTotal: (v) => "QL1 portfolio — total " + v,
+    xShareNote: "(prices use the Infinite-side QOM anchor)",
+    imgBasis: (p) => "Price anchor: QOM on 42 Chain (Infinite) = " + p,
+    imgTotal: (v) => "Total " + v, imgNoPrice: "No price",
+    msgLoadingData: "Data is still loading",
+    msgImgFail: "Failed to generate the image", msgShareOpened: "Share sheet opened",
+    msgImgDownloaded: "Image downloaded. Attach it to your post on social media",
+    importMsg: (n) => "Imported a shared list (" + n + " added to tracking)",
+    caLoadingData: "Data is still loading. Wait a moment and try again",
+    caBadAddress: "Invalid address format (0x + 40 hex characters)",
+    caReading: (a) => "Reading from the chain… " + a,
+    caAdded: (s, p, m) => "Added to tracking: " + s + " " + p + " / Market cap " + m,
+    caAddedNoPrice: (s, r) => "Added to tracking: " + s + " (no price: " + r + ")",
+    caReadFail: (m) => "Could not read it: " + m,
+    shareWatchOk: "Watchlist link copied. When a friend opens it, the same list is imported into their view",
+    sharePfOk: "Portfolio link (with holdings) copied",
+  },
+};
+function L(key, ...args) { const v = STR[LANG][key]; return typeof v === "function" ? v(...args) : v; }
+/* Snapshot data (generated offline) carries Japanese route strings; on the
+   English page translate the known fragments at display time. Live data is
+   produced through L() directly, so this only ever rewrites snapshot text. */
+function locRoute(s) {
+  if (LANG !== "en" || !s) return s;
+  return String(s)
+    .replace("プールはあるが流動性が $0.5 未満のため価格なし", "Pool exists but liquidity is under $0.5 — no price")
+    .replace("プールの相手側トークンに価格が無いため価格なし", "Counterparty token has no price — no price")
+    .replace("QomSwap にプールが見つかりません（価格なし）", "No QomSwap pool found (no price)")
+    .replace("LP裏付け（プール資産合計÷LP供給量）", "LP-backed (pool assets ÷ LP supply)")
+    .replace("（裏付け側の価格が無いため価格なし）", " (no price: an underlying token is unpriced)")
+    .replace("LPトークン", "LP token")
+    .replace("LP裏付け", "LP-backed")
+    .replace("Infiniteアンカー", "Infinite anchor")
+    .replace("$1固定", "$1 fixed")
+    .replace("（CA検索）", " (CA lookup)")
+    .replace("アンカー", "anchor");
+}
+function langTargetFor(value, currentLang) {
+  const v = value === "ja" ? "ja" : "en";
+  if (v === currentLang) return null;
+  return v === "ja" ? "ja.html" : "en.html";
+}
+function initLangSelector() {
+  const sel = typeof document !== "undefined" && document.getElementById ? document.getElementById("langSel") : null;
+  if (!sel || !sel.addEventListener) return;
+  sel.value = LANG;
+  sel.addEventListener("change", () => {
+    const v = sel.value === "ja" ? "ja" : "en";
+    try { localStorage.setItem("ql1prices_lang", v); } catch (e) { /* storage unavailable: still navigate */ }
+    const target = langTargetFor(v, LANG);
+    if (target && typeof location !== "undefined" && location) location.href = target + location.search + location.hash;
+  });
+}
+
 let DATA = null;             // {anchors, tokens, unpriced, stats, generatedAt, source, infBlock, ql1Block}
 let priceMap = new Map();    // address -> token object
 let sortKey = "mcap", sortDir = -1;
@@ -156,8 +332,8 @@ function computePrices(pairs, meta, holdersMap, iconsMap, anchors) {
     lpSupply: p.lpSupplyRaw ? bigToNum(p.lpSupplyRaw, 18) : null,
   }));
   const anchorMap = new Map([
-    [WQOM, { usd: anchors.qomUsd, label: "Infiniteアンカー" }],
-    [QUSDT, { usd: 1, label: "$1固定" }], [QUSDC, { usd: 1, label: "$1固定" }], [QDAI, { usd: 1, label: "$1固定" }],
+    [WQOM, { usd: anchors.qomUsd, label: L("anchorInfinite") }],
+    [QUSDT, { usd: 1, label: L("anchorFixed") }], [QUSDC, { usd: 1, label: L("anchorFixed") }], [QDAI, { usd: 1, label: L("anchorFixed") }],
   ]);
   function direct(amap) {
     const best = new Map(), all = new Map();
@@ -184,10 +360,10 @@ function computePrices(pairs, meta, holdersMap, iconsMap, anchors) {
     }
   }
   const inter = new Map(anchorMap);
-  for (const [a, b] of best) if (b.liq >= 500 && !anchorMap.has(a) && !b.diverge) inter.set(a, { usd: b.usd, label: "2段" });
+  for (const [a, b] of best) if (b.liq >= 500 && !anchorMap.has(a) && !b.diverge) inter.set(a, { usd: b.usd, label: L("hop2Label") });
   const second = direct(inter);
-  for (const [a, c] of second.best) if (!best.has(a) && !anchorMap.has(a)) best.set(a, { ...c, hop: 2, route: c.route + "→…→アンカー" });
-  for (const [a, av] of anchorMap) best.set(a, { usd: av.usd, route: av.label, via: "アンカー", liq: null, pair: null });
+  for (const [a, c] of second.best) if (!best.has(a) && !anchorMap.has(a)) best.set(a, { ...c, hop: 2, route: c.route + L("routeToAnchorSuffix") });
+  for (const [a, av] of anchorMap) best.set(a, { usd: av.usd, route: av.label, via: L("viaAnchor"), liq: null, pair: null });
   const supply = (a) => { const m = meta.get(a); return m && m.totalSupply != null ? bigToNum(m.totalSupply, dec(a)) : null; };
   const tokens = [];
   for (const [addr, info] of best) {
@@ -215,7 +391,7 @@ function computePrices(pairs, meta, holdersMap, iconsMap, anchors) {
           address: pr.pair, symbol: m.symbol || "QSWAP-V2", name: "QomSwap LP " + sym(pr.t0) + "/" + sym(pr.t1),
           decimals: 18, totalSupply: pr.lpSupply, holders: holdersMap.get(pr.pair) != null ? holdersMap.get(pr.pair) : null,
           icon: iconsMap.get(pr.pair) || null, priceUsd: val / pr.lpSupply, priceQom: (val / pr.lpSupply) / anchors.qomUsd,
-          mcap: val, route: "LP裏付け (" + sym(pr.t0) + "/" + sym(pr.t1) + ")", via: "LP", pair: pr.pair,
+          mcap: val, route: L("lpBacked", sym(pr.t0), sym(pr.t1)), via: "LP", pair: pr.pair,
           liqUsd: val / 2, hop: 1, reserveKnown: null, reserveToken: null, diverge: null, isLP: true,
         });
       }
@@ -235,7 +411,7 @@ async function fetchAnchors() {
   const info = pairsWanted.map((_, i) => {
     const pair = decPair(pairAddrs[i]); const t0 = decAddr(res[i * 2]);
     const rr = parseReservesRaw(res[i * 2 + 1]);
-    if (!pair || !t0 || !rr) throw new Error("42 Chainのアンカープールを取得できませんでした");
+    if (!pair || !t0 || !rr) throw new Error(L("errAnchorPool"));
     return { pair, t0, r0: bigToNum(rr[0], 18) || 0, r1: bigToNum(rr[1], 18) || 0 };
   });
   // 42/USDT: price42 = USDT per 42
@@ -251,10 +427,10 @@ async function fetchAnchors() {
 }
 async function fetchQl1Reference(qomUsd) {
   const pa = decPair(await rpcOne(QL1_RPC, QL1_FACTORY, SEL.getPair + encAddr(WQOM) + encAddr(QUSDT)));
-  if (!pa) throw new Error("QL1のWQOM/qUSDTプールが見つかりませんでした");
+  if (!pa) throw new Error(L("errQl1PoolMissing"));
   const res = await rpcBatch(QL1_RPC, [[pa, SEL.token0], [pa, SEL.getReserves]]);
   const t0 = decAddr(res[0]); const rr = parseReservesRaw(res[1]);
-  if (!t0 || !rr) throw new Error("QL1のWQOM/qUSDTプールの残高を取得できませんでした");
+  if (!t0 || !rr) throw new Error(L("errQl1PoolReserves"));
   const r0 = bigToNum(rr[0], t0 === WQOM ? 18 : 6) || 0;
   const r1 = bigToNum(rr[1], t0 === WQOM ? 6 : 18) || 0;
   const qomQl1Pool = t0 === WQOM ? r1 / r0 : r0 / r1;
@@ -282,11 +458,11 @@ async function loadLive() {
   const btn = document.getElementById("refreshBtn");
   btn.disabled = true;
   try {
-    setStatus("42 Chain からQOM価格アンカーを取得中…");
+    setStatus(L("statusAnchor"));
     const anchors = await fetchAnchors();
     const ref = await fetchQl1Reference(anchors.qomUsd);
     Object.assign(anchors, ref);
-    setStatus("QL1 のプールを全件取得中…（645ペア）");
+    setStatus(L("statusPairs"));
     const lenRes = await rpcOne(QL1_RPC, QL1_FACTORY, SEL.allPairsLength);
     const nPairs = Number(decUint(lenRes));
     let pairAddrs = [];
@@ -311,7 +487,7 @@ async function loadLive() {
         });
       });
     }
-    setStatus("トークン情報を取得中…");
+    setStatus(L("statusMeta"));
     const uniq = [...new Set(pairs.flatMap((p) => [p.token0, p.token1]))];
     const meta = new Map();
     for (const c of chunks(uniq, 50)) {
@@ -331,7 +507,7 @@ async function loadLive() {
       const rs = await rpcBatch(QL1_RPC, calls);
       c.forEach((t, i) => { if (!meta.has(t)) meta.set(t, { symbol: decStr(rs[i * 2]), name: decStr(rs[i * 2 + 1]), decimals: 18, totalSupply: null }); });
     }
-    setStatus("保有者数を取得中…");
+    setStatus(L("statusHolders"));
     let bs = { holders: new Map(), icons: new Map(), list: [] };
     try { bs = await fetchBlockscout(); } catch (e) { /* holders are optional */ }
     const tokens = computePrices(pairs, meta, bs.holders, bs.icons, anchors);
@@ -353,11 +529,11 @@ async function loadLive() {
       generatedAt: new Date().toISOString(), source: "live", infBlock, ql1Block,
     };
     rebuildPriceMap();
-    setStatus("ライブデータ表示中（42 Chain #" + infBlock + " / QL1 #" + ql1Block + "）");
+    setStatus(L("statusLive", infBlock, ql1Block));
     renderAll();
     await refreshMissingTracked();
   } catch (e) {
-    setStatus("ライブ取得に失敗しました（スナップショットを表示しています）: " + e.message);
+    setStatus(L("statusLiveFail", e.message));
   } finally {
     btn.disabled = false;
   }
@@ -368,7 +544,7 @@ async function loadSnapshot() {
   DATA = { ...j, source: "snapshot" };
   rebuildPriceMap();
   const d = new Date(j.generatedAt);
-  setStatus("スナップショット表示中（" + d.toLocaleString("ja-JP") + " 時点）— ライブ取得を試みています…");
+  setStatus(L("statusSnapshot", d.toLocaleString(LANG === "en" ? "en-US" : "ja-JP")));
   renderAll();
 }
 function rebuildPriceMap() {
@@ -386,38 +562,38 @@ function renderAnchors() {
   document.getElementById("price42").textContent = fmtPrice(a.price42);
   document.getElementById("qomViaFish").textContent = fmtPrice(a.qomUsdViaFish);
   const diffPct = Math.abs(a.qomUsd - a.qomUsdViaFish) / a.qomUsd * 100;
-  document.getElementById("fishNote").textContent = "FISH経由の逆算と " + diffPct.toFixed(2) + "% 差（小さいほどアンカーが安定）";
+  document.getElementById("fishNote").textContent = L("fishNote", diffPct.toFixed(2));
   document.getElementById("qomQl1Pool").textContent = fmtPrice(a.qomQl1Pool);
-  document.getElementById("divNote").textContent = "このサイトの基準の " + a.divergence.toFixed(2) + " 倍。Ave.ai はこちらのプール価格で全トークンを計算するため、実勢とズレます。";
+  document.getElementById("divNote").textContent = L("divNote", a.divergence.toFixed(2));
 }
 function tokenRowHtml(t, idx) {
   const badges =
     (t.isLP ? '<span class="badge lp">LP</span>' : "") +
-    (t.diverge ? '<span class="badge div">⚠ルート乖離</span>' : "") +
-    (t.liqUsd != null && t.liqUsd < 50 ? '<span class="badge lowliq">流動性小</span>' : "");
+    (t.diverge ? '<span class="badge div">' + L("badgeDiverge") + "</span>" : "") +
+    (t.liqUsd != null && t.liqUsd < 50 ? '<span class="badge lowliq">' + L("badgeLowLiq") + "</span>" : "");
   const icon = t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" loading="lazy" onerror="this.remove()">' : "";
   return '<tr class="tok" data-addr="' + t.address + '"><td class="rank">' + (idx + 1) + "</td>" +
     '<td class="tok-head">' + icon + '<span class="sym">' + esc(t.symbol) + "</span>" + badges + '<br><span class="tname">' + esc(t.name) + "</span></td>" +
-    '<td class="num" data-label="価格 (USD)" title="' + fmtFull(t.priceUsd) + '">' + fmtPrice(t.priceUsd) + "</td>" +
-    '<td class="num" data-label="価格 (QOM)">' + fmtNum(t.priceQom) + " QOM</td>" +
-    '<td class="num" data-label="時価総額">' + fmtMoney(t.mcap) + "</td>" +
-    '<td class="num" data-label="総供給量">' + fmtNum(t.totalSupply) + "</td>" +
-    '<td class="num" data-label="保有者">' + (t.holders != null ? t.holders.toLocaleString() : "—") + "</td>" +
-    '<td class="num" data-label="プール流動性（基準側）">' + (t.liqUsd != null ? fmtMoney(t.liqUsd) : "基準") + "</td>" +
-    '<td data-label="算出ルート">' + esc(t.route || "") + "</td></tr>";
+    '<td class="num" data-label="' + L("colPriceUsd") + '" title="' + fmtFull(t.priceUsd) + '">' + fmtPrice(t.priceUsd) + "</td>" +
+    '<td class="num" data-label="' + L("colPriceQom") + '">' + fmtNum(t.priceQom) + " QOM</td>" +
+    '<td class="num" data-label="' + L("colMcap") + '">' + fmtMoney(t.mcap) + "</td>" +
+    '<td class="num" data-label="' + L("colSupply") + '">' + fmtNum(t.totalSupply) + "</td>" +
+    '<td class="num" data-label="' + L("colHolders") + '">' + (t.holders != null ? t.holders.toLocaleString() : "—") + "</td>" +
+    '<td class="num" data-label="' + L("colLiq") + '">' + (t.liqUsd != null ? fmtMoney(t.liqUsd) : L("liqAnchor")) + "</td>" +
+    '<td class="routecell" data-label="' + L("colRoute") + '">' + esc(locRoute(t.route || "")) + "</td></tr>";
 }
 function detailLines(t) {
   const a = DATA.anchors;
   const lines = [];
-  lines.push("アドレス: " + t.address + '　<a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">エクスプローラーで開く</a>');
-  if (t.pair) lines.push("プール: " + t.pair + '　<a href="' + SCAN + "/address/" + t.pair + '" target="_blank" rel="noopener">プールを開く</a>');
-  if (t.reserveKnown != null && t.reserveToken != null) lines.push("プール残高: " + fmtNum(t.reserveToken) + " " + esc(t.symbol) + " / " + fmtNum(t.reserveKnown) + " " + esc(t.via || "") + "（基準側）");
-  if (t.via === "WQOM" && a.divergence) lines.push("Ave.ai方式で計算すると: " + fmtPrice(t.priceUsd * a.divergence) + "（QL1プールのQOM価格を使うため " + a.divergence.toFixed(2) + " 倍）");
+  lines.push(L("detailAddress") + t.address + '　<a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">' + L("detailOpenExplorer") + "</a>");
+  if (t.pair) lines.push(L("detailPool") + t.pair + '　<a href="' + SCAN + "/address/" + t.pair + '" target="_blank" rel="noopener">' + L("detailOpenPool") + "</a>");
+  if (t.reserveKnown != null && t.reserveToken != null) lines.push(L("detailReserves", fmtNum(t.reserveToken), esc(t.symbol), fmtNum(t.reserveKnown), esc(t.via || "")));
+  if (t.via === "WQOM" && a.divergence) lines.push(L("detailAve", fmtPrice(t.priceUsd * a.divergence), a.divergence.toFixed(2)));
   if (t.diverge) {
-    lines.push("⚠ ルート乖離の内訳: " + t.diverge.map((c) => esc(c.via) + "経由 " + fmtPrice(c.usd) + "（流動性 " + fmtMoney(c.liq) + "）").join(" / "));
+    lines.push(L("detailDivergeHead") + t.diverge.map((c) => L("detailDivergeItem", esc(c.via), fmtPrice(c.usd), fmtMoney(c.liq))).join(" / "));
   }
-  if (t.isLP) lines.push("これは QomSwap のLPトークンです。価格はプールの裏付け資産合計 ÷ LP総供給量で計算しています。");
-  if (tracked.has(t.address)) lines.push("📌 追跡中です（上の追跡リストで管理できます）");
+  if (t.isLP) lines.push(L("detailLp"));
+  if (tracked.has(t.address)) lines.push(L("detailTracked"));
   return lines;
 }
 
@@ -437,13 +613,13 @@ function openConverter(addr) {
   document.getElementById("convTitle").innerHTML =
     (t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" onerror="this.remove()">' : "") +
     esc(t.symbol || "?") + ' <span class="conv-name">' + esc(t.name || "") + "</span>";
-  document.getElementById("convSymLabel").textContent = (t.symbol || "トークン") + " の量";
+  document.getElementById("convSymLabel").textContent = L("convAmountOf", t.symbol || "Token");
   const qomPrice = t.priceUsd / DATA.anchors.qomUsd;
   document.getElementById("convPriceLine").innerHTML =
     "1 " + esc(t.symbol || "") + " = <b>" + fmtPrice(t.priceUsd) + "</b> ／ <b>" + fmtNum(qomPrice) + " QOM</b><br>" +
-    "時価総額: " + fmtMoney(t.mcap) + " ／ 流動性: " + (t.liqUsd != null ? fmtMoney(t.liqUsd) : "—");
+    L("convMcapLiq", fmtMoney(t.mcap), t.liqUsd != null ? fmtMoney(t.liqUsd) : "—");
   document.getElementById("convRate").textContent =
-    "換算レート: 1 QOM = " + fmtPrice(DATA.anchors.qomUsd) + "（このサイトの基準）";
+    L("convRate", fmtPrice(DATA.anchors.qomUsd));
   document.getElementById("convDetail").innerHTML = detailLines(t).join("<br>");
   updateConvTrackBtn();
   const amt = tracked.get(addr);
@@ -457,7 +633,7 @@ function closeConverter() {
 }
 function updateConvTrackBtn() {
   document.getElementById("convTrackBtn").textContent =
-    convAddr && tracked.has(convAddr) ? "📌 追跡を外す" : "📌 追跡に追加";
+    convAddr && tracked.has(convAddr) ? L("convTrackRemove") : L("convTrackAdd");
 }
 function convUpdate(from) {
   const t = convAddr ? (priceMap.get(convAddr) || customMeta.get(convAddr)) : null;
@@ -507,7 +683,7 @@ function renderTable() {
   const body = document.getElementById("tokenBody");
   body.innerHTML = rows.map((t, i) => tokenRowHtml(t, i)).join("");
   document.getElementById("countLine").textContent =
-    "価格あり " + DATA.tokens.length + " 件中 " + rows.length + " 件を表示（プール総数 " + (DATA.stats ? DATA.stats.ql1Pairs : "—") + "）。トークンをタップすると換算コンバータが開きます";
+    L("countLine", DATA.tokens.length, rows.length, DATA.stats ? DATA.stats.ql1Pairs : "—");
   body.querySelectorAll("tr.tok").forEach((tr) => {
     tr.addEventListener("click", () => openConverter(tr.dataset.addr));
   });
@@ -515,11 +691,11 @@ function renderTable() {
 function renderUnpriced() {
   if (!DATA) return;
   const body = document.getElementById("unpricedBody");
-  document.getElementById("unpricedSummary").textContent = "価格なしのトークン（" + DATA.unpriced.length + "件）";
+  document.getElementById("unpricedSummary").textContent = L("unpricedSummary", DATA.unpriced.length);
   body.innerHTML = DATA.unpriced.slice(0, 300).map((t) =>
     "<tr><td>" + (t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" loading="lazy" onerror="this.remove()">' : "") +
     '<span class="sym">' + esc(t.symbol || "?") + '</span> <span class="tname">' + esc(t.name || "") + "</span>" +
-    ' <a href="#" class="trackUnpriced" data-addr="' + t.address + '">📌追跡</a></td>' +
+    ' <a href="#" class="trackUnpriced" data-addr="' + t.address + '">' + L("trackLink") + "</a></td>" +
     '<td class="num">' + (t.holders != null ? t.holders.toLocaleString() : "—") + "</td>" +
     '<td><a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></td></tr>").join("");
   body.querySelectorAll(".trackUnpriced").forEach((a) => a.addEventListener("click", (ev) => { ev.preventDefault(); addTracked(a.dataset.addr); }));
@@ -537,7 +713,7 @@ async function lookupToken(address) {
   const decimals = metaRes[2] ? Number(decUint(metaRes[2])) : null;
   const totalSupplyRaw = decUint(metaRes[3]);
   if (!symbol && decimals == null && totalSupplyRaw == null) {
-    throw new Error("ERC-20トークンとして読み取れませんでした（アドレスが違うか、QL1上のトークンではない可能性があります）");
+    throw new Error(L("errNotErc20"));
   }
   const dec = decimals != null ? decimals : 18;
   const totalSupply = totalSupplyRaw != null ? bigToNum(totalSupplyRaw, dec) : null;
@@ -574,9 +750,9 @@ async function lookupToken(address) {
           base.priceUsd = val / totalSupply;
           base.priceQom = base.priceUsd / DATA.anchors.qomUsd;
           base.mcap = val; base.liqUsd = val / 2;
-          base.route = "LP裏付け（プール資産合計÷LP供給量）"; base.via = "LP"; base.pair = addr;
+          base.route = L("routeLpBackedLookup"); base.via = "LP"; base.pair = addr;
         } else {
-          base.route = "LPトークン（裏付け側の価格が無いため価格なし）";
+          base.route = L("routeLpNoPrice");
         }
         return finishCustom(base);
       }
@@ -610,20 +786,20 @@ async function lookupToken(address) {
       base.priceUsd = best.usd;
       base.priceQom = best.usd / DATA.anchors.qomUsd;
       base.mcap = totalSupply != null ? best.usd * totalSupply : null;
-      base.route = (base.symbol || "") + "→" + best.via + "（CA検索）";
+      base.route = (base.symbol || "") + "→" + best.via + L("routeCaSuffix");
       base.via = best.via; base.pair = best.pair; base.liqUsd = best.liq;
       base.reserveKnown = best.reserveKnown; base.reserveToken = best.reserveToken;
       if (cands.length >= 2 && Math.max(...cands.map((c) => c.usd)) / Math.min(...cands.map((c) => c.usd)) > 3) {
         base.diverge = cands.map((c) => ({ via: c.via, usd: c.usd, liq: c.liq }));
       }
     } else if (cands.length) {
-      base.route = "プールはあるが流動性が $0.5 未満のため価格なし";
+      base.route = L("routeLowLiq");
       base.pair = cands[0].pair;
     } else {
-      base.route = "プールの相手側トークンに価格が無いため価格なし";
+      base.route = L("routeQuoteNoPrice");
     }
   } else {
-    base.route = "QomSwap にプールが見つかりません（価格なし）";
+    base.route = L("routeNoPool");
   }
   return finishCustom(base);
 }
@@ -657,7 +833,7 @@ function removeTracked(address) {
 function trackedEntries() {
   const out = [];
   for (const [addr, amount] of tracked) {
-    const t = priceMap.get(addr) || customMeta.get(addr) || { address: addr, symbol: "読込中…", priceUsd: null };
+    const t = priceMap.get(addr) || customMeta.get(addr) || { address: addr, symbol: L("loadingSym"), priceUsd: null };
     const amt = amount === "" ? null : Number(amount);
     const value = amt != null && t.priceUsd != null ? amt * t.priceUsd : null;
     out.push({ t, amount, value });
@@ -673,23 +849,23 @@ function renderTracked() {
   wrap.style.display = "";
   let total = 0, valued = 0, unpriced = 0;
   for (const e of entries) { if (e.value != null) { total += e.value; valued++; } if (e.t.priceUsd == null) unpriced++; }
-  document.getElementById("portfolioTotal").textContent = valued ? fmtMoney(total) : "—（保有量を入れると計算します）";
+  document.getElementById("portfolioTotal").textContent = valued ? fmtMoney(total) : L("pfTotalEmpty");
   document.getElementById("portfolioDetail").textContent =
-    (valued ? "（" + valued + "件の評価額合計" + (DATA ? " / QOM換算 " + fmtNum(total / DATA.anchors.qomUsd) + " QOM" : "") + "）" : "") +
-    (unpriced ? " ※価格なし " + unpriced + " 件は含みません" : "");
+    (valued ? L("pfDetail", valued, DATA ? fmtNum(total / DATA.anchors.qomUsd) : "—") : "") +
+    (unpriced ? L("pfUnpriced", unpriced) : "");
   cards.innerHTML = entries.map(({ t, amount, value }) =>
     '<div class="tcard" data-addr="' + t.address + '">' +
     '<div class="t-sym">' + (t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" onerror="this.remove()">' : "") + esc(t.symbol || "?") +
-    (t.isLP ? '<span class="badge lp">LP</span>' : "") + (t.diverge ? '<span class="badge div">⚠乖離</span>' : "") + "</div>" +
+    (t.isLP ? '<span class="badge lp">LP</span>' : "") + (t.diverge ? '<span class="badge div">' + L("badgeDivergeShort") + "</span>" : "") + "</div>" +
     '<div class="t-line">' + esc(t.name || "") + "</div>" +
-    '<div class="t-price">' + (t.priceUsd != null ? fmtPrice(t.priceUsd) : "価格なし") + "</div>" +
-    '<div class="t-line">時価総額: ' + fmtMoney(t.mcap) + " / 流動性: " + (t.liqUsd != null ? fmtMoney(t.liqUsd) : "—") + "<br>" +
-    esc(t.route || "") + "<br>" +
+    '<div class="t-price">' + (t.priceUsd != null ? fmtPrice(t.priceUsd) : L("cardNoPrice")) + "</div>" +
+    '<div class="t-line">' + L("cardMcapLiq", fmtMoney(t.mcap), t.liqUsd != null ? fmtMoney(t.liqUsd) : "—") + "<br>" +
+    esc(locRoute(t.route || "")) + "<br>" +
     '<a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></div>" +
-    '<label class="t-line">保有量<input class="amount" type="number" min="0" step="any" placeholder="保有量を入力" value="' + esc(amount) + '"></label>' +
-    '<div class="t-value">' + (value != null ? "評価額: " + fmtMoney(value) + "（" + fmtFull(value) + "）" : "") + "</div>" +
-    (t.priceUsd != null ? '<button type="button" class="t-conv">⇄ 換算（ドル／QOM）</button>' : "") +
-    '<button type="button" class="t-remove">追跡を外す</button>' +
+    '<label class="t-line">' + L("cardAmountLabel") + '<input class="amount" type="number" min="0" step="any" placeholder="' + L("cardAmountPh") + '" value="' + esc(amount) + '"></label>' +
+    '<div class="t-value">' + (value != null ? L("cardValue", fmtMoney(value), fmtFull(value)) : "") + "</div>" +
+    (t.priceUsd != null ? '<button type="button" class="t-conv">' + L("cardConvBtn") + "</button>" : "") +
+    '<button type="button" class="t-remove">' + L("cardRemoveBtn") + "</button>" +
     "</div>").join("");
   cards.querySelectorAll(".tcard").forEach((card) => {
     const addr = card.dataset.addr;
@@ -697,7 +873,7 @@ function renderTracked() {
     if (convBtn) convBtn.addEventListener("click", () => openConverter(addr));
     card.querySelector(".t-remove").addEventListener("click", () => {
       removeTracked(addr);
-      document.getElementById("shareMsg").textContent = "追跡から外しました: " + addr;
+      document.getElementById("shareMsg").textContent = L("removedMsg", addr);
     });
     const input = card.querySelector(".amount");
     input.addEventListener("input", () => {
@@ -707,10 +883,10 @@ function renderTracked() {
       const entries2 = trackedEntries();
       let total2 = 0, valued2 = 0;
       for (const e of entries2) if (e.value != null) { total2 += e.value; valued2++; }
-      document.getElementById("portfolioTotal").textContent = valued2 ? fmtMoney(total2) : "—（保有量を入れると計算します）";
+      document.getElementById("portfolioTotal").textContent = valued2 ? fmtMoney(total2) : L("pfTotalEmpty");
       const t = priceMap.get(addr);
       const v = input.value !== "" && t && t.priceUsd != null ? Number(input.value) * t.priceUsd : null;
-      card.querySelector(".t-value").textContent = v != null ? "評価額: " + fmtMoney(v) + "（" + fmtFull(v) + "）" : "";
+      card.querySelector(".t-value").textContent = v != null ? L("cardValue", fmtMoney(v), fmtFull(v)) : "";
     });
   });
 }
@@ -724,7 +900,7 @@ function buildShareUrl(withAmounts) {
 }
 async function copyText(text, msgEl, okMsg) {
   try { await navigator.clipboard.writeText(text); msgEl.textContent = okMsg; }
-  catch (e) { msgEl.textContent = "コピーできませんでした。リンク: " + text; }
+  catch (e) { msgEl.textContent = L("copyFail", text); }
 }
 function shareTextLines() {
   const entries = trackedEntries();
@@ -739,13 +915,13 @@ function openXShare() {
   const { entries, total } = shareTextLines();
   const top = entries.filter((e) => e.value != null).slice(0, 5)
     .map((e) => "$" + (e.t.symbol || "?") + " " + fmtMoney(e.value)).join("\n");
-  const text = "QL1ポートフォリオ 合計 " + fmtMoney(total) + (top ? "\n" + top : "") + "\n（価格はInfinite側QOMアンカー基準）";
+  const text = L("xShareTotal", fmtMoney(total)) + (top ? "\n" + top : "") + "\n" + L("xShareNote");
   const url = buildShareUrl(true);
   window.open("https://twitter.com/intent/tweet?text=" + encodeURIComponent(text) + "&url=" + encodeURIComponent(url), "_blank");
 }
 async function shareImage() {
   const msg = document.getElementById("shareMsg");
-  if (!DATA || !DATA.anchors) { msg.textContent = "データを読み込み中です"; return; }
+  if (!DATA || !DATA.anchors) { msg.textContent = L("msgLoadingData"); return; }
   const { entries, total } = shareTextLines();
   const canvas = document.createElement("canvas");
   canvas.width = 1200; canvas.height = 630;
@@ -753,11 +929,11 @@ async function shareImage() {
   ctx.fillStyle = "#0f1420"; ctx.fillRect(0, 0, 1200, 630);
   ctx.fillStyle = "#2470d8"; ctx.fillRect(0, 0, 1200, 8);
   ctx.fillStyle = "#e8ecf3"; ctx.font = "bold 44px sans-serif";
-  ctx.fillText("QL1 ポートフォリオ", 60, 90);
+  ctx.fillText(L("xShareTitle"), 60, 90);
   ctx.font = "24px sans-serif"; ctx.fillStyle = "#aab4c4";
-  ctx.fillText("価格基準: 42 Chain（Infinite）側 QOM = " + fmtPrice(DATA.anchors.qomUsd), 60, 135);
+  ctx.fillText(L("imgBasis", fmtPrice(DATA.anchors.qomUsd)), 60, 135);
   ctx.fillStyle = "#ffffff"; ctx.font = "bold 64px sans-serif";
-  ctx.fillText("合計 " + fmtMoney(total), 60, 215);
+  ctx.fillText(L("imgTotal", fmtMoney(total)), 60, 215);
   ctx.font = "26px sans-serif";
   let y = 285;
   const rows = entries.slice(0, 7);
@@ -767,23 +943,23 @@ async function shareImage() {
     const label = "$" + (e.t.symbol || "?") + "  " + (e.amount !== "" && e.amount != null ? fmtNum(Number(e.amount)) : "—");
     ctx.fillText(label.slice(0, 34), 60, y);
     ctx.fillStyle = "#8fd0ff";
-    ctx.fillText(e.value != null ? fmtMoney(e.value) : "価格なし", 760, y);
+    ctx.fillText(e.value != null ? fmtMoney(e.value) : L("imgNoPrice"), 760, y);
     if (e.value != null) { ctx.fillStyle = "#2470d8"; ctx.fillRect(60, y + 12, Math.max(6, 1020 * (e.value / maxV)), 8); }
     y += 52;
   }
   ctx.fillStyle = "#8d99ae"; ctx.font = "22px sans-serif";
-  ctx.fillText(new Date().toLocaleString("ja-JP") + " / " + location.origin + location.pathname, 60, 590);
+  ctx.fillText(new Date().toLocaleString(LANG === "en" ? "en-US" : "ja-JP") + " / " + location.origin + location.pathname, 60, 590);
   canvas.toBlob(async (blob) => {
-    if (!blob) { msg.textContent = "画像の生成に失敗しました"; return; }
+    if (!blob) { msg.textContent = L("msgImgFail"); return; }
     const file = new File([blob], "ql1-portfolio.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file], title: "QL1ポートフォリオ" }); msg.textContent = "共有シートを開きました"; return; }
+      try { await navigator.share({ files: [file], title: L("xShareTitle") }); msg.textContent = L("msgShareOpened"); return; }
       catch (e) { if (e && e.name === "AbortError") return; }
     }
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = "ql1-portfolio.png"; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    msg.textContent = "画像をダウンロードしました。SNSに添付して投稿できます";
+    msg.textContent = L("msgImgDownloaded");
   }, "image/png");
 }
 function importFromUrl() {
@@ -796,7 +972,7 @@ function importFromUrl() {
     const addr = (addrRaw || "").trim().toLowerCase();
     if (/^0x[0-9a-f]{40}$/.test(addr)) { addTracked(addr, amount || ""); count++; }
   }
-  if (count) document.getElementById("caMsg").textContent = "共有リストを取り込みました（" + count + "件を追跡に追加）";
+  if (count) document.getElementById("caMsg").textContent = L("importMsg", count);
   return count;
 }
 
@@ -804,26 +980,26 @@ function importFromUrl() {
 async function onCaAdd() {
   const input = document.getElementById("caInput");
   const msg = document.getElementById("caMsg");
-  if (!DATA || !DATA.anchors || !DATA.anchors.qomUsd) { msg.textContent = "データを読み込み中です。少し待ってからもう一度試してください"; return; }
+  if (!DATA || !DATA.anchors || !DATA.anchors.qomUsd) { msg.textContent = L("caLoadingData"); return; }
   const raw = input.value.trim();
   const m = raw.match(/0x[0-9a-fA-F]{40}/);
-  if (!m) { msg.textContent = "アドレスの形式が違います（0x + 40文字の16進数）"; return; }
+  if (!m) { msg.textContent = L("caBadAddress"); return; }
   const addr = m[0].toLowerCase();
   const btn = document.getElementById("caAddBtn");
   btn.disabled = true;
-  msg.textContent = "チェーンから読み取り中… " + shortAddr(addr);
+  msg.textContent = L("caReading", shortAddr(addr));
   try {
     const tok = await lookupToken(addr);
     addTracked(addr);
     renderTable();
     msg.textContent = tok.priceUsd != null
-      ? "追跡に追加しました: " + tok.symbol + " " + fmtPrice(tok.priceUsd) + " / 時価総額 " + fmtMoney(tok.mcap)
-      : "追跡に追加しました: " + tok.symbol + "（価格なし: " + (tok.route || "") + "）";
+      ? L("caAdded", tok.symbol, fmtPrice(tok.priceUsd), fmtMoney(tok.mcap))
+      : L("caAddedNoPrice", tok.symbol, locRoute(tok.route || ""));
     input.value = "";
     const card = document.querySelector('.tcard[data-addr="' + addr + '"]');
     if (card) { card.scrollIntoView({ behavior: "smooth", block: "center" }); card.classList.add("flash"); }
   } catch (e) {
-    msg.textContent = "読み取れませんでした: " + e.message;
+    msg.textContent = L("caReadFail", e.message);
   } finally {
     btn.disabled = false;
   }
@@ -849,9 +1025,9 @@ function bindControls() {
     if (/0x[0-9a-fA-F]{40}/.test(document.getElementById("caInput").value)) onCaAdd();
   }, 50));
   document.getElementById("shareWatchBtn").addEventListener("click", () =>
-    copyText(buildShareUrl(false), document.getElementById("shareMsg"), "ウォッチリストのリンクをコピーしました。友達が開くと、同じリストがその人の画面に取り込まれます"));
+    copyText(buildShareUrl(false), document.getElementById("shareMsg"), L("shareWatchOk")));
   document.getElementById("sharePfBtn").addEventListener("click", () =>
-    copyText(buildShareUrl(true), document.getElementById("shareMsg"), "ポートフォリオ（保有量つき）のリンクをコピーしました"));
+    copyText(buildShareUrl(true), document.getElementById("shareMsg"), L("sharePfOk")));
   document.getElementById("shareXBtn").addEventListener("click", openXShare);
   document.getElementById("shareImgBtn").addEventListener("click", shareImage);
   document.getElementById("convToken").addEventListener("input", () => convUpdate("token"));
@@ -869,13 +1045,14 @@ function bindControls() {
   });
 }
 (async function init() {
+  initLangSelector();
   loadLocal();
   bindControls();
   importFromUrl();
   try {
     await loadSnapshot();
   } catch (e) {
-    setStatus("スナップショットが読めませんでした。ライブ取得を試みます…");
+    setStatus(L("statusSnapshotFail"));
     DATA = { anchors: { price42: 0, qomUsd: 0, qomUsdViaFish: 0, qomQl1Pool: 0, divergence: 0 }, tokens: [], unpriced: [], stats: {} };
     renderAll();
   }

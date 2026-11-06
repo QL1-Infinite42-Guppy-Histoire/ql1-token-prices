@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QL1トークン価格・時価総額（Infiniteアンカー）</title>
+<meta name="description" content="QL1の全トークンの価格と時価総額を、42 Chain（Infinite）側で追跡したQOM価格を基準に、QomSwapの流動性プールから算出するサイト。Ave.ai方式（QL1のQOM/qUSDTペア基準）との乖離も表示。">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <span class="lang-switch"><label>言語 / Language <select id="langSel"><option value="en">English</option><option value="ja" selected>日本語</option></select></label></span>
+  <h1>QL1トークン価格・時価総額</h1>
+  <p class="sub">基準は <b>42 Chain（Infinite）側のQOM価格</b>。各トークンは QomSwap の流動性プールから算出しています。</p>
+  <p id="status" class="status">読み込み中…</p>
+  <button id="refreshBtn" type="button">最新データを取得（オンチェーン）</button>
+</header>
+
+<section id="anchorPanel" class="panel">
+  <h2>価格の基準（アンカー）</h2>
+  <div class="anchor-grid">
+    <div class="anchor-card main">
+      <div class="a-label">QOM 価格（このサイトの基準）</div>
+      <div class="a-value" id="qomPrice">—</div>
+      <div class="a-note" id="qomRoute">42 Chain の QOM/42 プール → 42/USDT プールで換算</div>
+    </div>
+    <div class="anchor-card">
+      <div class="a-label">42 価格</div>
+      <div class="a-value" id="price42">—</div>
+      <div class="a-note">42 Chain の 42/USDT プール</div>
+    </div>
+    <div class="anchor-card">
+      <div class="a-label">裏付けチェック（FISH経由）</div>
+      <div class="a-value" id="qomViaFish">—</div>
+      <div class="a-note" id="fishNote">FISH/USDT × FISH/QOM から逆算したQOM価格</div>
+    </div>
+    <div class="anchor-card warn">
+      <div class="a-label">Ave.ai方式だと（QL1のQOM/qUSDTプール）</div>
+      <div class="a-value" id="qomQl1Pool">—</div>
+      <div class="a-note" id="divNote">—</div>
+    </div>
+  </div>
+  <details class="method">
+    <summary>計算方法と注意</summary>
+    <ul>
+      <li>QOM価格は 42 Chain 側で追跡します：<b>QOM/42プール</b>の比率 × <b>42/USDTプール</b>の42価格。別の経路（FISH/USDT × FISH/QOM）でも逆算して、大きくズレていないか毎回チェックしています。</li>
+      <li>各QL1トークンの価格は、QomSwap の全645ペア（ファクトリーから全件取得）の中から、そのトークンと<b>基準トークン（WQOM／qUSDT／qUSDC／qDAI）との直接ペア</b>で、基準側の流動性が一番大きいプールを採用します。基準側の流動性が $0.5 未満のプールは「流動性なし」として価格を出しません。</li>
+      <li>WQOM は上のQOM価格、qUSDT／qUSDC／qDAI は $1 固定で換算します。両方の経路があるトークンで価格が3倍以上ズレた場合は「⚠ルート乖離」と表示します。</li>
+      <li>時価総額 = 価格 × 総供給量（FDV方式）。ブリッジトークン（qUSDT等）の総供給量は発行上限を含む場合があり、その場合は時価総額が実態より大きく出ます。</li>
+      <li>プールが小さいトークンの価格は推定です。流動性（基準側）の金額を必ず一緒に確認してください。流動性が時価総額に対して極端に小さいトークンは、表示価格でその時価総額分を売買できるという意味ではありません。</li>
+      <li>プール情報の原データはチェーン上の QomSwap ファクトリーです（Ave.ai が表示しているのも同じプール群です）。このサイトは価格の「基準」だけを Ave.ai と変えています。</li>
+    </ul>
+  </details>
+</section>
+
+<section class="panel ca-panel">
+  <h2>CA（コントラクトアドレス）で追跡</h2>
+  <p class="count">QL1トークンのCAを貼ると、その場でチェーンから読み取って価格と時価総額を表示し、追跡リストに追加します。一覧に無い新しいトークンでも大丈夫です。</p>
+  <div class="ca-row">
+    <input id="caInput" type="text" placeholder="0x…（QL1トークンのCA）" autocomplete="off" spellcheck="false">
+    <button id="caAddBtn" type="button">追跡に追加</button>
+  </div>
+  <p id="caMsg" class="status"></p>
+  <div id="trackedWrap" style="display:none">
+    <h3>📌 追跡中のトークン（お気に入り）</h3>
+    <p class="count">各カードに<b>保有量</b>を入れるとポートフォリオ評価額が出ます。保有量はこのブラウザにだけ保存され、シェアボタンを押したときにだけリンクや画像に含まれます。</p>
+    <div id="portfolioBar" class="portfolio-bar">ポートフォリオ合計: <b id="portfolioTotal">—</b> <span id="portfolioDetail"></span></div>
+    <div id="trackedCards" class="tracked-grid"></div>
+    <div class="share-row">
+      <button id="shareWatchBtn" type="button">🔗 ウォッチリストをシェア（リンクをコピー）</button>
+      <button id="sharePfBtn" type="button">🔗 ポートフォリオをシェア（保有量つきリンク）</button>
+      <button id="shareXBtn" type="button">𝕏 でシェア</button>
+      <button id="shareImgBtn" type="button">🖼 画像でシェア（SNS用）</button>
+    </div>
+    <p id="shareMsg" class="status"></p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="controls">
+    <input id="searchBox" type="search" placeholder="トークン名・シンボル・アドレスで検索">
+    <label>流動性
+      <select id="minLiq">
+        <option value="0">すべて</option>
+        <option value="10">$10以上</option>
+        <option value="50" selected>$50以上</option>
+        <option value="100">$100以上</option>
+        <option value="500">$500以上</option>
+      </select>
+    </label>
+    <label><input id="showLp" type="checkbox"> LPトークンを表示</label>
+    <label><input id="showDivergeOnly" type="checkbox"> ⚠乖離のみ</label>
+  </div>
+  <p id="countLine" class="count"></p>
+  <div class="table-wrap">
+    <table id="tokenTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th data-sort="symbol">トークン</th>
+          <th data-sort="priceUsd" class="num">価格 (USD)</th>
+          <th data-sort="priceQom" class="num">価格 (QOM)</th>
+          <th data-sort="mcap" class="num">時価総額</th>
+          <th data-sort="totalSupply" class="num">総供給量</th>
+          <th data-sort="holders" class="num">保有者</th>
+          <th data-sort="liqUsd" class="num">プール流動性<br>(基準側)</th>
+          <th>算出ルート</th>
+        </tr>
+      </thead>
+      <tbody id="tokenBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <details id="unpricedDetails">
+    <summary id="unpricedSummary">価格なしのトークン</summary>
+    <p class="count">QomSwap に有効なプールが無い（または流動性が $0.5 未満の）トークンです。価格は推測で出しません。</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>トークン</th><th class="num">保有者</th><th>アドレス</th></tr></thead>
+        <tbody id="unpricedBody"></tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<footer>
+  <p>データ取得元：42 Chain RPC / QL1 RPC（QomSwap・Don't Panic のプールを直接読取）、保有者数は scan.qom.network。<br>
+  このサイトの価格はプールの比率から計算した推定値で、取引の約定価格を保証しません。</p>
+</footer>
+
+<div id="convOverlay" class="conv-overlay" style="display:none">
+  <div class="conv-sheet">
+    <div class="conv-head">
+      <div id="convTitle" class="conv-title"></div>
+      <button id="convClose" type="button" class="conv-close" aria-label="閉じる">✕</button>
+    </div>
+    <div id="convPriceLine" class="conv-price-line"></div>
+    <div class="conv-fields">
+      <label><span id="convSymLabel">トークンの量</span>
+        <input id="convToken" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+      <div class="conv-eq">＝</div>
+      <label><span>ドル (USD)</span>
+        <input id="convUsd" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+      <div class="conv-eq">＝</div>
+      <label><span>QOM</span>
+        <input id="convQom" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+    </div>
+    <p class="conv-hint">どの欄に入力しても、他の2つが自動で換算されます。ドルとQOM、両方の見方で比べられます。</p>
+    <div id="convRate" class="conv-rate"></div>
+    <div id="convDetail" class="conv-detail"></div>
+    <div class="conv-actions">
+      <button id="convTrackBtn" type="button">📌 追跡に追加</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

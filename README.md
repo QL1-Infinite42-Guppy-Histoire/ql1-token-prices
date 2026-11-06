@@ -6,6 +6,14 @@ QL1 の全トークンの価格と時価総額を、**42 Chain（Infinite）側�
 
 **公開サイト:** https://ql1-infinite42-guppy-histoire.github.io/ql1-token-prices/
 
+トップ（index.html）は言語の振り分けページです。保存済みの言語設定
+（localStorage の `ql1prices_lang`）が「ja」のときだけ日本語ページへ、
+それ以外は**英語がデフォルト**で英語ページへ進みます。各ページ右上の
+セレクタでいつでも切り替えできます（選択は保存されます）。
+
+- 英語: https://ql1-infinite42-guppy-histoire.github.io/ql1-token-prices/en.html
+- 日本語: https://ql1-infinite42-guppy-histoire.github.io/ql1-token-prices/ja.html
+
 ## なぜ Ave.ai の表示と違うのか
 
 Ave.ai は QL1 内の **QOM/qUSDT ペア**の価格で QOM を換算して全トークンを計算している。そのプール基準だと QOM は約 $3.46×10⁻⁹ になるが、42 Chain 側の市場では約 $7.74×10⁻¹⁰ で、**約4.47倍の乖離**がある（2026-11-06 実測）。このサイトは 42 Chain 側を基準にする。
@@ -43,6 +51,22 @@ QL1: evm-rpc-ql1.mschihuahua.org、保有者数: scan.qom.network Blockscout API
 スナップショットの再生成: `python3 tools/generate_snapshot.py docs/snapshot.json`
 
 価格はプール比率からの推定値で、約定価格の保証ではない。
+
+## English summary
+
+A static site that lists prices and market caps for every QL1 token, anchored
+to the QOM price tracked on the 42 Chain (Infinite) side instead of the QL1
+QOM/qUSDT pool that Ave.ai uses (the two differed by about 4.47× when measured
+on 2026-11-06). Token prices come from each token's deepest direct QomSwap
+pair against an anchor token (WQOM at the Infinite-tracked QOM price;
+qUSDT/qUSDC/qDAI at $1); market cap is price × total supply (FDV). Features:
+live on-chain loading in the browser with a bundled snapshot fallback,
+search/sort/filters, instant CA (contract address) lookup and tracking,
+holdings-based portfolio totals, and sharing via watchlist links, portfolio
+links, X, and generated PNG images. The root page is a language gate —
+English by default, Japanese at `ja.html` — with a language selector at the
+top right of each page. Prices are estimates from pool ratios, not guaranteed
+execution prices. MIT licensed.
 
 ## ライセンス
 

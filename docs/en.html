@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QL1 Token Prices & Market Caps (Infinite-Anchored)</title>
+<meta name="description" content="Prices and market caps for every QL1 token, derived from QomSwap liquidity pools against a QOM price tracked on the 42 Chain (Infinite) side. Also shows the divergence from the Ave.ai method (QL1 QOM/qUSDT pool).">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <span class="lang-switch"><label>Language / 言語 <select id="langSel"><option value="en" selected>English</option><option value="ja">日本語</option></select></label></span>
+  <h1>QL1 Token Prices & Market Caps</h1>
+  <p class="sub">Prices are anchored to the <b>QOM price on 42 Chain (Infinite)</b>. Each token is priced from its QomSwap liquidity pools.</p>
+  <p id="status" class="status">Loading…</p>
+  <button id="refreshBtn" type="button">Fetch latest data (on-chain)</button>
+</header>
+
+<section id="anchorPanel" class="panel">
+  <h2>Price anchors</h2>
+  <div class="anchor-grid">
+    <div class="anchor-card main">
+      <div class="a-label">QOM price (this site's anchor)</div>
+      <div class="a-value" id="qomPrice">—</div>
+      <div class="a-note" id="qomRoute">Converted via the QOM/42 pool → 42/USDT pool on 42 Chain</div>
+    </div>
+    <div class="anchor-card">
+      <div class="a-label">42 price</div>
+      <div class="a-value" id="price42">—</div>
+      <div class="a-note">42/USDT pool on 42 Chain</div>
+    </div>
+    <div class="anchor-card">
+      <div class="a-label">Cross-check (via FISH)</div>
+      <div class="a-value" id="qomViaFish">—</div>
+      <div class="a-note" id="fishNote">QOM price implied by FISH/USDT × FISH/QOM</div>
+    </div>
+    <div class="anchor-card warn">
+      <div class="a-label">Ave.ai method (QL1 QOM/qUSDT pool)</div>
+      <div class="a-value" id="qomQl1Pool">—</div>
+      <div class="a-note" id="divNote">—</div>
+    </div>
+  </div>
+  <details class="method">
+    <summary>How prices are calculated & caveats</summary>
+    <ul>
+      <li>The QOM price is tracked on the 42 Chain side: the <b>QOM/42 pool</b> ratio × the 42 price from the <b>42/USDT pool</b>. It is also cross-checked through a second route (FISH/USDT × FISH/QOM) every time, to make sure the two are not far apart.</li>
+      <li>Each QL1 token's price uses, out of all 645 QomSwap pairs (fetched in full from the factory), the <b>direct pair against an anchor token (WQOM / qUSDT / qUSDC / qDAI)</b> with the deepest anchor-side liquidity. Pools with less than $0.5 of anchor-side liquidity are treated as "no liquidity" and get no price.</li>
+      <li>WQOM uses the QOM price above; qUSDT / qUSDC / qDAI are fixed at $1. When a token has two routes and the prices differ by more than 3×, it is flagged "⚠ Route divergence".</li>
+      <li>Market cap = price × total supply (FDV style). The total supply of bridged tokens (such as qUSDT) may include a mint cap, in which case the market cap reads larger than reality.</li>
+      <li>Prices for tokens with small pools are estimates. Always check the liquidity (anchor side) shown alongside. If liquidity is tiny compared to market cap, it does not mean that amount could actually be traded at the displayed price.</li>
+      <li>The underlying pool data comes from the on-chain QomSwap factory (the same pools Ave.ai displays). This site only changes the price "anchor" compared to Ave.ai.</li>
+    </ul>
+  </details>
+</section>
+
+<section class="panel ca-panel">
+  <h2>Track by CA (contract address)</h2>
+  <p class="count">Paste a QL1 token's CA and it is read from the chain on the spot, priced, given a market cap, and added to your tracking list. Brand-new tokens that are not in the list work too.</p>
+  <div class="ca-row">
+    <input id="caInput" type="text" placeholder="0x… (QL1 token CA)" autocomplete="off" spellcheck="false">
+    <button id="caAddBtn" type="button">Add to tracking</button>
+  </div>
+  <p id="caMsg" class="status"></p>
+  <div id="trackedWrap" style="display:none">
+    <h3>📌 Tracked tokens (favorites)</h3>
+    <p class="count">Enter a <b>holding amount</b> on each card to see your portfolio value. Amounts are stored only in this browser, and are included in links or images only when you press a share button.</p>
+    <div id="portfolioBar" class="portfolio-bar">Portfolio total: <b id="portfolioTotal">—</b> <span id="portfolioDetail"></span></div>
+    <div id="trackedCards" class="tracked-grid"></div>
+    <div class="share-row">
+      <button id="shareWatchBtn" type="button">🔗 Share watchlist (copy link)</button>
+      <button id="sharePfBtn" type="button">🔗 Share portfolio (link with holdings)</button>
+      <button id="shareXBtn" type="button">𝕏 Share on X</button>
+      <button id="shareImgBtn" type="button">🖼 Share as image (for social media)</button>
+    </div>
+    <p id="shareMsg" class="status"></p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="controls">
+    <input id="searchBox" type="search" placeholder="Search by token name, symbol or address">
+    <label>Liquidity
+      <select id="minLiq">
+        <option value="0">All</option>
+        <option value="10">$10+</option>
+        <option value="50" selected>$50+</option>
+        <option value="100">$100+</option>
+        <option value="500">$500+</option>
+      </select>
+    </label>
+    <label><input id="showLp" type="checkbox"> Show LP tokens</label>
+    <label><input id="showDivergeOnly" type="checkbox"> ⚠ Diverged only</label>
+  </div>
+  <p id="countLine" class="count"></p>
+  <div class="table-wrap">
+    <table id="tokenTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th data-sort="symbol">Token</th>
+          <th data-sort="priceUsd" class="num">Price (USD)</th>
+          <th data-sort="priceQom" class="num">Price (QOM)</th>
+          <th data-sort="mcap" class="num">Market cap</th>
+          <th data-sort="totalSupply" class="num">Total supply</th>
+          <th data-sort="holders" class="num">Holders</th>
+          <th data-sort="liqUsd" class="num">Pool liquidity<br>(anchor side)</th>
+          <th>Route</th>
+        </tr>
+      </thead>
+      <tbody id="tokenBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <details id="unpricedDetails">
+    <summary id="unpricedSummary">Tokens without a price</summary>
+    <p class="count">Tokens with no valid QomSwap pool (or anchor-side liquidity under $0.5). No price is guessed for these.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Token</th><th class="num">Holders</th><th>Address</th></tr></thead>
+        <tbody id="unpricedBody"></tbody>
+      </table>
+    </div>
+  </details>
+</section>
+
+<footer>
+  <p>Data sources: 42 Chain RPC / QL1 RPC (QomSwap and Don't Panic pools read directly), holder counts from scan.qom.network.<br>
+  Prices on this site are estimates computed from pool ratios and do not guarantee execution prices.</p>
+</footer>
+
+<div id="convOverlay" class="conv-overlay" style="display:none">
+  <div class="conv-sheet">
+    <div class="conv-head">
+      <div id="convTitle" class="conv-title"></div>
+      <button id="convClose" type="button" class="conv-close" aria-label="Close">✕</button>
+    </div>
+    <div id="convPriceLine" class="conv-price-line"></div>
+    <div class="conv-fields">
+      <label><span id="convSymLabel">Token amount</span>
+        <input id="convToken" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+      <div class="conv-eq">＝</div>
+      <label><span>Dollar (USD)</span>
+        <input id="convUsd" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+      <div class="conv-eq">＝</div>
+      <label><span>QOM</span>
+        <input id="convQom" type="text" inputmode="decimal" autocomplete="off" placeholder="0">
+      </label>
+    </div>
+    <p class="conv-hint">Type in any field and the other two are converted automatically. Compare in both dollars and QOM.</p>
+    <div id="convRate" class="conv-rate"></div>
+    <div id="convDetail" class="conv-detail"></div>
+    <div class="conv-actions">
+      <button id="convTrackBtn" type="button">📌 Add to tracking</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
