@@ -23,7 +23,6 @@
   --shadow: none; --overlay: rgba(0,0,0,.72);
 }
 * { box-sizing: border-box; }
-.update-banner { background: #8a6d1f; color: #fff8e1; text-align: center; font-weight: 700; font-size: 15px; line-height: 1.55; padding: 12px 16px; border-bottom: 2px solid #ffd94d; }
 body { margin: 0; font-family: -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; }
 header { padding: 24px 20px 8px; max-width: 1120px; margin: 0 auto; position: relative; }
 h1 { font-size: 28px; margin: 0 0 6px; padding-right: 340px; line-height: 1.3; }

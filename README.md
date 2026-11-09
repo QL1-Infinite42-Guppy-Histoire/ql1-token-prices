@@ -68,6 +68,12 @@ English by default, Japanese at `ja.html` — with a language selector at the
 top right of each page. Prices are estimates from pool ratios, not guaranteed
 execution prices. MIT licensed.
 
+## 変更履歴
+
+- 2026-11-09: リアルタイム版に更新（「要アップデート」告知で予告していた新バージョン）。価格の入力は全て訪問時点でチェーンからライブ取得し、開いたままでは45秒ごとに自動更新、最終更新時刻とブロック番号を表示。告知バナーは撤去。
+- 2026-11-08: 「要アップデート／新バージョンをお待ちください」の告知バナーを掲載（サイトは公開維持）。
+- 2026-11-06: 初版公開。
+
 ## ライセンス
 
 MIT License（[LICENSE](LICENSE)）。オープンソースとして公開しています。自由に使って、直して、配って大丈夫です。

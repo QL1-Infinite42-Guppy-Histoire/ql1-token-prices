@@ -49,6 +49,8 @@ const STR = {
     statusPairs: "QL1 のプールを全件取得中…（645ペア）",
     statusMeta: "トークン情報を取得中…", statusHolders: "保有者数を取得中…",
     statusLive: (a, b) => "ライブデータ表示中（42 Chain #" + a + " / QL1 #" + b + "）",
+    statusUpdated: (t) => "最終更新: " + t,
+    statusAuto: "・45秒ごとに自動更新",
     statusLiveFail: (m) => "ライブ取得に失敗しました（スナップショットを表示しています）: " + m,
     statusSnapshot: (d) => "スナップショット表示中（" + d + " 時点）— ライブ取得を試みています…",
     statusSnapshotFail: "スナップショットが読めませんでした。ライブ取得を試みます…",
@@ -116,6 +118,8 @@ const STR = {
     statusPairs: "Fetching all QL1 pools… (645 pairs)",
     statusMeta: "Fetching token metadata…", statusHolders: "Fetching holder counts…",
     statusLive: (a, b) => "Live data (42 Chain #" + a + " / QL1 #" + b + ")",
+    statusUpdated: (t) => "Last updated: " + t,
+    statusAuto: " · auto-refreshes every 45s",
     statusLiveFail: (m) => "Live fetch failed (showing the snapshot): " + m,
     statusSnapshot: (d) => "Showing a snapshot (as of " + d + ") — trying live data…",
     statusSnapshotFail: "Could not load the snapshot. Trying live data…",
@@ -454,7 +458,14 @@ async function fetchBlockscout() {
   }
   return { holders, icons, list };
 }
+/* Live refresh state: prices are re-read from both chains on every load.
+   AUTO_REFRESH_MS drives the periodic re-read while the page stays open. */
+let liveBusy = false;
+let lastLiveAt = null;
+const AUTO_REFRESH_MS = 45000;
 async function loadLive() {
+  if (liveBusy) return;
+  liveBusy = true;
   const btn = document.getElementById("refreshBtn");
   btn.disabled = true;
   try {
@@ -529,13 +540,17 @@ async function loadLive() {
       generatedAt: new Date().toISOString(), source: "live", infBlock, ql1Block,
     };
     rebuildPriceMap();
-    setStatus(L("statusLive", infBlock, ql1Block));
+    lastLiveAt = new Date();
+    setStatus(L("statusLive", infBlock, ql1Block) + " — " +
+      L("statusUpdated", lastLiveAt.toLocaleString(LANG === "en" ? "en-US" : "ja-JP", { hour12: false })) +
+      L("statusAuto"));
     renderAll();
     await refreshMissingTracked();
   } catch (e) {
     setStatus(L("statusLiveFail", e.message));
   } finally {
     btn.disabled = false;
+    liveBusy = false;
   }
 }
 async function loadSnapshot() {
@@ -1059,4 +1074,15 @@ function bindControls() {
   renderTracked();
   await refreshMissingTracked();
   loadLive();
+  /* Keep prices tracking the chains while the page stays open: re-read
+     everything every 45s. Skip a cycle while the tab is hidden, while a
+     previous load is still running, or while the converter is open. */
+  setInterval(() => {
+    if (document.hidden || liveBusy || convAddr) return;
+    loadLive();
+  }, AUTO_REFRESH_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && !liveBusy && !convAddr && lastLiveAt &&
+        Date.now() - lastLiveAt.getTime() > AUTO_REFRESH_MS) loadLive();
+  });
 })();
