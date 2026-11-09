@@ -5,6 +5,7 @@
 
 const INF_RPC = "https://evm-rpc.infinitedrive.xyz";
 const QL1_RPC = "https://evm-rpc-ql1.mschihuahua.org";
+const CACHE_URL = "https://ql1-token-prices.nepicobsv.workers.dev/prices";
 const BS_API = "https://scan.qom.network/api/v2";
 const QL1_FACTORY = "0x475f361993d6facbf32fb82b66be0fb40f3d974c";
 const INF_FACTORY = "0x3157c6aca800d507af95ab1466adbA3a6f11ee1a";
@@ -49,6 +50,7 @@ const STR = {
     statusPairs: "QL1 のプールを全件取得中…（645ペア）",
     statusMeta: "トークン情報を取得中…", statusHolders: "保有者数を取得中…",
     statusLive: (a, b) => "ライブデータ表示中（42 Chain #" + a + " / QL1 #" + b + "）",
+    statusCache: (a, b) => "ライブ価格（サーバー経由）で表示中（42 Chain #" + a + " / QL1 #" + b + "）",
     statusUpdated: (t) => "最終更新: " + t,
     statusAuto: "・45秒ごとに自動更新",
     statusLiveFail: (m) => "ライブ取得に失敗しました（スナップショットを表示しています）: " + m,
@@ -118,6 +120,7 @@ const STR = {
     statusPairs: "Fetching all QL1 pools… (645 pairs)",
     statusMeta: "Fetching token metadata…", statusHolders: "Fetching holder counts…",
     statusLive: (a, b) => "Live data (42 Chain #" + a + " / QL1 #" + b + ")",
+    statusCache: (a, b) => "Live prices via cache server (42 Chain #" + a + " / QL1 #" + b + ")",
     statusUpdated: (t) => "Last updated: " + t,
     statusAuto: " · auto-refreshes every 45s",
     statusLiveFail: (m) => "Live fetch failed (showing the snapshot): " + m,
@@ -463,6 +466,13 @@ async function fetchBlockscout() {
 let liveBusy = false;
 let lastLiveAt = null;
 const AUTO_REFRESH_MS = 45000;
+/* Run chunked RPC reads with a few in flight at once (the direct-read
+   fallback used to walk ~90 batch requests strictly one by one). */
+async function poolEach(items, limit, fn) {
+  let i = 0;
+  async function w() { while (i < items.length) { const it = items[i++]; await fn(it); } }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, w));
+}
 async function loadLive() {
   if (liveBusy) return;
   liveBusy = true;
@@ -477,13 +487,13 @@ async function loadLive() {
     const lenRes = await rpcOne(QL1_RPC, QL1_FACTORY, SEL.allPairsLength);
     const nPairs = Number(decUint(lenRes));
     let pairAddrs = [];
-    for (const c of chunks([...Array(nPairs).keys()], 100)) {
+    await poolEach(chunks([...Array(nPairs).keys()], 100), 4, async (c) => {
       const rs = await rpcBatch(QL1_RPC, c.map((i) => [QL1_FACTORY, SEL.allPairs + encUint(i)]));
       pairAddrs.push(...rs.map(decAddr));
-    }
+    });
     pairAddrs = pairAddrs.filter(Boolean);
     const pairs = [];
-    for (const c of chunks(pairAddrs, 50)) {
+    await poolEach(chunks(pairAddrs, 50), 4, async (c) => {
       const calls = [];
       for (const p of c) calls.push([p, SEL.token0], [p, SEL.token1], [p, SEL.getReserves], [p, SEL.totalSupply]);
       const rs = await rpcBatch(QL1_RPC, calls);
@@ -497,11 +507,11 @@ async function loadLive() {
           lpSupplyRaw: decUint(rs[i * 4 + 3]),
         });
       });
-    }
+    });
     setStatus(L("statusMeta"));
     const uniq = [...new Set(pairs.flatMap((p) => [p.token0, p.token1]))];
     const meta = new Map();
-    for (const c of chunks(uniq, 50)) {
+    await poolEach(chunks(uniq, 50), 4, async (c) => {
       const calls = [];
       for (const t of c) calls.push([t, SEL.symbol], [t, SEL.name], [t, SEL.decimals], [t, SEL.totalSupply]);
       const rs = await rpcBatch(QL1_RPC, calls);
@@ -510,14 +520,14 @@ async function loadLive() {
         decimals: rs[i * 4 + 2] ? Number(decUint(rs[i * 4 + 2])) : null,
         totalSupply: decUint(rs[i * 4 + 3]),
       }));
-    }
+    });
     // pair contracts' own metadata (for LP rows)
-    for (const c of chunks(pairAddrs, 50)) {
+    await poolEach(chunks(pairAddrs, 50), 4, async (c) => {
       const calls = [];
       for (const t of c) calls.push([t, SEL.symbol], [t, SEL.name]);
       const rs = await rpcBatch(QL1_RPC, calls);
       c.forEach((t, i) => { if (!meta.has(t)) meta.set(t, { symbol: decStr(rs[i * 2]), name: decStr(rs[i * 2 + 1]), decimals: 18, totalSupply: null }); });
-    }
+    });
     setStatus(L("statusHolders"));
     let bs = { holders: new Map(), icons: new Map(), list: [] };
     try { bs = await fetchBlockscout(); } catch (e) { /* holders are optional */ }
@@ -552,6 +562,51 @@ async function loadLive() {
     btn.disabled = false;
     liveBusy = false;
   }
+}
+/* Fast path: the cache Worker re-reads both chains every minute into
+   one JSON, so the page normally loads in about a second instead of
+   making ~2,600 RPC reads from the visitor's phone. Falls back to the
+   direct on-chain read (loadLive) whenever the cache is unreachable
+   or older than 5 minutes. */
+async function loadCache() {
+  if (liveBusy) return false;
+  liveBusy = true;
+  const btn = document.getElementById("refreshBtn");
+  btn.disabled = true;
+  try {
+    const ctl = new AbortController();
+    const to = setTimeout(() => ctl.abort(), 10000);
+    const res = await fetch(CACHE_URL, { cache: "no-store", signal: ctl.signal });
+    clearTimeout(to);
+    if (!res.ok) throw new Error("cache http " + res.status);
+    const j = await res.json();
+    if (!j || !j.anchors || !Array.isArray(j.tokens) || !j.generatedAt) throw new Error("cache bad payload");
+    if (Date.now() - new Date(j.generatedAt).getTime() > 5 * 60 * 1000) throw new Error("cache stale");
+    DATA = {
+      anchors: j.anchors, tokens: j.tokens, unpriced: j.unpriced || [], stats: j.stats || {},
+      generatedAt: j.generatedAt, source: "cache", infBlock: j.infBlock, ql1Block: j.ql1Block,
+    };
+    rebuildPriceMap();
+    lastLiveAt = new Date(j.generatedAt);
+    setStatus(L("statusCache", j.infBlock, j.ql1Block) + " — " +
+      L("statusUpdated", lastLiveAt.toLocaleString(LANG === "en" ? "en-US" : "ja-JP", { hour12: false })) +
+      L("statusAuto"));
+    renderAll();
+    refreshMissingTracked();
+    return true;
+  } catch (e) {
+    return false;
+  } finally {
+    liveBusy = false;
+    btn.disabled = false;
+  }
+}
+let refreshBusy = false;
+async function refreshData() {
+  if (refreshBusy) return;
+  refreshBusy = true;
+  try { if (!(await loadCache())) await loadLive(); }
+  finally { refreshBusy = false; }
 }
 async function loadSnapshot() {
   const res = await fetch("snapshot.json");
@@ -1033,7 +1088,7 @@ function bindControls() {
       renderTable();
     });
   });
-  document.getElementById("refreshBtn").addEventListener("click", loadLive);
+  document.getElementById("refreshBtn").addEventListener("click", refreshData);
   document.getElementById("caAddBtn").addEventListener("click", onCaAdd);
   document.getElementById("caInput").addEventListener("keydown", (e) => { if (e.key === "Enter") onCaAdd(); });
   document.getElementById("caInput").addEventListener("paste", () => setTimeout(() => {
@@ -1073,16 +1128,17 @@ function bindControls() {
   }
   renderTracked();
   await refreshMissingTracked();
-  loadLive();
-  /* Keep prices tracking the chains while the page stays open: re-read
-     everything every 45s. Skip a cycle while the tab is hidden, while a
-     previous load is still running, or while the converter is open. */
+  refreshData();
+  /* Keep prices tracking the chains while the page stays open: refresh
+     every 45s (normally a single cache fetch). Skip a cycle while the
+     tab is hidden, while a previous load is still running, or while
+     the converter is open. */
   setInterval(() => {
     if (document.hidden || liveBusy || convAddr) return;
-    loadLive();
+    refreshData();
   }, AUTO_REFRESH_MS);
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && !liveBusy && !convAddr && lastLiveAt &&
-        Date.now() - lastLiveAt.getTime() > AUTO_REFRESH_MS) loadLive();
+        Date.now() - lastLiveAt.getTime() > AUTO_REFRESH_MS) refreshData();
   });
 })();

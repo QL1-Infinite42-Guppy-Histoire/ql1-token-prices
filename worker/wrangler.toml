@@ -1,0 +1,15 @@
+# QL1 token prices cache worker.
+# The live deployment on this account is done with the Cloudflare API
+# helper (cf.py deploy-bind), mirroring the other Guppy workers; this
+# file mirrors the same configuration for wrangler users.
+name = "ql1-token-prices"
+main = "dist/worker.bundle.js"
+compatibility_date = "2024-11-01"
+
+# Refresh the cached price dataset every minute.
+[triggers]
+crons = ["* * * * *"]
+
+[[kv_namespaces]]
+binding = "PRICES_KV"
+id = "2ac7434a271145ae87064d36bed9e233"

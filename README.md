@@ -45,10 +45,18 @@ Ave.ai は QL1 内の **QOM/qUSDT ペア**の価格で QOM を換算して全ト
 
 ## データ取得
 
-ブラウザが RPC から直接ライブ取得する（42 Chain: evm-rpc.infinitedrive.xyz、
-QL1: evm-rpc-ql1.mschihuahua.org、保有者数: scan.qom.network Blockscout API）。
-取得に失敗した場合は同梱のスナップショット（`docs/snapshot.json`）を表示する。
+通常はキャッシュ用 Cloudflare Worker（`ql1-token-prices.nepicobsv.workers.dev`）が
+1分ごとに両チェーンを読み直して KV に置いた JSON を取得する（表示まで約1秒）。
+Worker はサイトと同じ計算コードを `tools/build_worker.py` で `docs/app.js` から
+生成して使っており、価格・アンカーはブラウザ直接取得と同一になることを検証済み。
+Worker に届かない・古い場合はブラウザが RPC から直接ライブ取得し（42 Chain:
+evm-rpc.infinitedrive.xyz、QL1: evm-rpc-ql1.mschihuahua.org、保有者数:
+scan.qom.network Blockscout API）、それも失敗した場合は同梱のスナップショット
+（`docs/snapshot.json`）を表示する。
 スナップショットの再生成: `python3 tools/generate_snapshot.py docs/snapshot.json`
+Worker の再デプロイ: `python3 tools/build_worker.py` でバンドルを生成し、
+Cloudflare API ヘルパーで `worker/dist/worker.bundle.js` を
+`worker/bindings.json` と一緒にデプロイ（cron は毎分）。
 
 価格はプール比率からの推定値で、約定価格の保証ではない。
 
@@ -70,6 +78,7 @@ execution prices. MIT licensed.
 
 ## 変更履歴
 
+- 2026-11-09: 高速化。キャッシュ用 Worker（1分ごとに両チェーンを読み直し）を追加し、通常表示を約1秒に短縮（従来はスマホで数分かかることがあった）。直接取得のフォールバックも並列化。計算方法とアンカーは不変。
 - 2026-11-09: リアルタイム版に更新（「要アップデート」告知で予告していた新バージョン）。価格の入力は全て訪問時点でチェーンからライブ取得し、開いたままでは45秒ごとに自動更新、最終更新時刻とブロック番号を表示。告知バナーは撤去。
 - 2026-11-08: 「要アップデート／新バージョンをお待ちください」の告知バナーを掲載（サイトは公開維持）。
 - 2026-11-06: 初版公開。
