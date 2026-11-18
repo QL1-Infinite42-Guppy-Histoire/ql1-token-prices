@@ -23,9 +23,11 @@ const SEL = {
   token0: "0x0dfe1681", token1: "0xd21220a7", getReserves: "0x0902f1ac",
   symbol: "0x95d89b41", name: "0x06fdde03", decimals: "0x313ce567", totalSupply: "0x18160ddd",
 };
+/* qCAW is priced from its WQOM pool (owner instruction; see computePrices) */
+const QCAW = "0xd2140e16adf37194036865e90bbca1139b739d0d";
 /* quote tokens tried for an instant CA lookup, in priority order */
 const QUOTE_CANDIDATES = [WQOM, QUSDT, QUSDC, QDAI,
-  "0xd2140e16adf37194036865e90bbca1139b739d0d", /* qCAW */
+  QCAW, /* qCAW */
   "0x6c39b68a28ba90f4eb80032ec0eb32ad81cbbEd4".toLowerCase(), /* O */
   "0x4667fc0a4b996e0f997313a49de48036b584ef22", /* BABY */
   "0x2860ec7c34b29f3d2b43788c9a5f0de051f799bb", /* Father */
@@ -350,7 +352,7 @@ function computePrices(pairs, meta, holdersMap, iconsMap, anchors) {
         if (!ka || rk <= 0 || ru <= 0) continue;
         const liq = rk * ka.usd;
         if (liq < 0.5) continue;
-        const cand = { usd: ka.usd * rk / ru, route: sym(unk) + "→" + sym(known), via: sym(known), liq, pair: pr.pair, reserveKnown: rk, reserveToken: ru };
+        const cand = { usd: ka.usd * rk / ru, route: sym(unk) + "→" + sym(known), via: sym(known), knownAddr: known, liq, pair: pr.pair, reserveKnown: rk, reserveToken: ru };
         if (!all.has(unk)) all.set(unk, []);
         all.get(unk).push(cand);
         if (!best.has(unk) || liq > best.get(unk).liq) best.set(unk, cand);
@@ -359,6 +361,13 @@ function computePrices(pairs, meta, holdersMap, iconsMap, anchors) {
     return { best, all };
   }
   let { best, all } = direct(anchorMap);
+  /* Owner instruction (2026-11-18): qCAW is priced from its WQOM pool —
+     its main pool — whenever that route exists (direct() only lists
+     routes clearing the $0.5 minimum), instead of whichever anchor pool
+     is deepest in USD terms. The divergence check below still compares
+     every route, so a large gap to the qUSDT route stays visible. */
+  const qcawWqom = (all.get(QCAW) || []).find((c) => c.knownAddr === WQOM);
+  if (qcawWqom) best.set(QCAW, qcawWqom);
   for (const [a, b] of best) {
     const cs = all.get(a) || [];
     if (cs.length >= 2) {
@@ -848,11 +857,13 @@ async function lookupToken(address) {
       const rTok = bigToNum(quoteIs0 ? rr[1] : rr[0], dec) || 0;
       if (!quoteToken || quoteToken.priceUsd == null || rQuote <= 0 || rTok <= 0) return;
       const liq = rQuote * quoteToken.priceUsd;
-      cands.push({ usd: quoteToken.priceUsd * rQuote / rTok, liq, pair: e.pair, via: quoteToken.symbol, reserveKnown: rQuote, reserveToken: rTok });
+      cands.push({ usd: quoteToken.priceUsd * rQuote / rTok, liq, pair: e.pair, via: quoteToken.symbol, quote: e.quote, reserveKnown: rQuote, reserveToken: rTok });
     });
     cands.sort((x, y) => y.liq - x.liq);
-    if (cands.length && cands[0].liq >= 0.5) {
-      const best = cands[0];
+    let best = cands[0];
+    /* qCAW is priced from its WQOM pool (see computePrices). */
+    if (addr === QCAW) { const w = cands.find((c) => c.quote === WQOM && c.liq >= 0.5); if (w) best = w; }
+    if (cands.length && best && best.liq >= 0.5) {
       base.priceUsd = best.usd;
       base.priceQom = best.usd / DATA.anchors.qomUsd;
       base.mcap = totalSupply != null ? best.usd * totalSupply : null;

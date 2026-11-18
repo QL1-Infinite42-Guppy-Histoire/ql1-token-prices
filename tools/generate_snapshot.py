@@ -167,6 +167,13 @@ def main(out_path):
                     if unk not in best or liq > best[unk]['liq']: best[unk] = cand
         return best, allc
     best, allc = direct(ANCHORS)
+    # Owner instruction (2026-11-18): qCAW is priced from its WQOM pool
+    # (mirrors computePrices in docs/app.js).
+    QCAW = "0xd2140e16adf37194036865e90bbca1139b739d0d"
+    for c in allc.get(QCAW, []):
+        if c['viaAddr'] == WQOM:
+            best[QCAW] = c
+            break
     for a in list(best):
         cs = allc[a]
         if len(cs) >= 2:
