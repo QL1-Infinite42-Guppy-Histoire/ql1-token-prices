@@ -164,24 +164,43 @@ tr.tok { cursor: pointer; }
   footer { padding: 4px 16px 32px; }
 }
 
-/* ---------- mobile: token table becomes big rounded cards ---------- */
-@media (max-width: 760px) {
-  #tokenTable { min-width: 0; font-size: 14px; }
-  #tokenTable thead { display: none; }
-  #tokenTable, #tokenTable tbody, #tokenTable tr, #tokenTable td { display: block; width: 100%; }
-  #tokenTable tr.tok { background: var(--card-grad); border: 1px solid var(--line); border-bottom: 1px solid var(--line); border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm); }
-  #tokenTable tr.tok:hover { background: var(--chip); }
-  #tokenTable td { border-bottom: 0; padding: 3px 0; }
-  #tokenTable td.rank { display: none; }
-  #tokenTable td.tok-head { padding-bottom: 8px; }
-  #tokenTable td.tok-head img.icon { width: 34px; height: 34px; margin-right: 10px; }
-  #tokenTable td.tok-head .sym { font-size: 17px; }
-  #tokenTable td.num, #tokenTable td.routecell {
-    display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 5px 0;
-  }
-  #tokenTable td.num::before, #tokenTable td.routecell::before {
-    content: attr(data-label); color: var(--muted); font-size: 12px; font-weight: 400; text-align: left; white-space: nowrap;
-  }
-  #tokenTable tr.detail { background: var(--detail-bg); border-radius: 16px; padding: 12px 14px; margin: -4px 0 12px; }
-  #tokenTable tr.detail td { background: transparent; padding: 0; }
+/* ---------- token list: cards at every width ----------
+   Mobile keeps one card per token in a single column; from 761px up
+   the cards flow into a multi-column grid and the detail row spans
+   the full width. The table header becomes a strip of sort pills
+   (the same th[data-sort] elements keep their click handlers), so
+   sorting works at every width. Display layer only. */
+#tokenTable { min-width: 0; font-size: 14px; }
+#tokenTable thead { display: block; margin: 2px 0 14px; }
+#tokenTable thead tr { display: flex; flex-wrap: wrap; gap: 6px; }
+#tokenTable th { display: inline-flex; align-items: center; position: static; background: var(--chip); color: var(--muted); border-bottom: none; border-radius: 999px; padding: 8px 14px; font-size: 12px; letter-spacing: .02em; white-space: nowrap; }
+#tokenTable th:first-child { display: none; }
+#tokenTable, #tokenTable tbody, #tokenTable tr, #tokenTable td { display: block; }
+#tokenTable tr.tok { background: var(--card-grad); border: 1px solid var(--line); border-radius: 20px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm); cursor: pointer; }
+#tokenTable tr.tok:hover { background: var(--card-grad); }
+#tokenTable td { border-bottom: 0; padding: 3px 0; }
+#tokenTable td.rank { display: none; }
+#tokenTable td.tok-head { padding-bottom: 8px; }
+#tokenTable td.tok-head img.icon { width: 34px; height: 34px; margin-right: 10px; }
+#tokenTable td.tok-head .sym { font-size: 17px; }
+#tokenTable td.num, #tokenTable td.routecell {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 5px 0;
+}
+#tokenTable td.num::before, #tokenTable td.routecell::before {
+  content: attr(data-label); color: var(--muted); font-size: 12px; font-weight: 400; text-align: left; white-space: nowrap;
+}
+#tokenTable tr.detail { background: var(--detail-bg); border-radius: 16px; padding: 12px 14px; margin: -4px 0 12px; }
+#tokenTable tr.detail td { background: transparent; padding: 0; }
+
+/* ---------- tablet & desktop: multi-column card grid ---------- */
+@media (min-width: 761px) {
+  #tokenTable tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  #tokenTable tr.tok { margin-bottom: 0; }
+  #tokenTable tr.detail { grid-column: 1 / -1; margin: 0; }
+}
+@media (min-width: 1024px) {
+  .panel { padding: 26px 28px; }
+  #tokenTable { font-size: 15px; }
+  #tokenTable tr.tok { padding: 18px; }
+  #tokenTable td.tok-head .sym { font-size: 18px; }
 }
