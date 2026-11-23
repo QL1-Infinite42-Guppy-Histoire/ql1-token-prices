@@ -572,7 +572,7 @@ async function loadLive() {
     liveBusy = false;
   }
 }
-/* Fast path: the cache Worker re-reads both chains every minute into
+/* Fast path: the cache Worker re-reads both chains every two minutes into
    one JSON, so the page normally loads in about a second instead of
    making ~2,600 RPC reads from the visitor's phone. Falls back to the
    direct on-chain read (loadLive) whenever the cache is unreachable

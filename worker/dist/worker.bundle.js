@@ -234,10 +234,11 @@ function computePrices(pairs, meta, holdersMap, iconsMap, anchors) {
 
 /* === WORKER GLUE === */
 /* Refreshes the full QL1 price dataset from both chains into KV every
-   minute (cron). The site fetches this one JSON instead of making
+   two minutes (cron). The site fetches this one JSON instead of making
    ~2,600 RPC reads from the visitor's phone. If the cache is missing,
-   the first fetch computes it inline; if it is older than 2 minutes, a
-   fetch serves the stale copy and refreshes in the background. */
+   the first fetch computes it inline; if it is older than 3 minutes
+   (i.e. a cron cycle was missed), a fetch serves the stale copy and
+   refreshes in the background. */
 
 const PRICES_KEY = "prices:v1";
 const BSLIST_KEY = "bslist:v1";
@@ -414,7 +415,7 @@ export default {
       } else {
         try {
           const j = JSON.parse(raw);
-          if (Date.now() - new Date(j.generatedAt).getTime() > 120000) {
+          if (Date.now() - new Date(j.generatedAt).getTime() > 180000) {
             ctx.waitUntil(refresh(env).catch(() => {}));
           }
         } catch (e) { /* serve what we have */ }

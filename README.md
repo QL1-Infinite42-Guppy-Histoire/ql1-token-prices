@@ -47,7 +47,7 @@ Ave.ai は QL1 内の **QOM/qUSDT ペア**の価格で QOM を換算して全ト
 ## データ取得
 
 通常はキャッシュ用 Cloudflare Worker（`ql1-token-prices.nepicobsv.workers.dev`）が
-1分ごとに両チェーンを読み直して KV に置いた JSON を取得する（表示まで約1秒）。
+2分ごとに両チェーンを読み直して KV に置いた JSON を取得する（表示まで約1秒）。
 Worker はサイトと同じ計算コードを `tools/build_worker.py` で `docs/app.js` から
 生成して使っており、価格・アンカーはブラウザ直接取得と同一になることを検証済み。
 Worker に届かない・古い場合はブラウザが RPC から直接ライブ取得し（42 Chain:
@@ -57,7 +57,7 @@ scan.qom.network Blockscout API）、それも失敗した場合は同梱のス�
 スナップショットの再生成: `python3 tools/generate_snapshot.py docs/snapshot.json`
 Worker の再デプロイ: `python3 tools/build_worker.py` でバンドルを生成し、
 Cloudflare API ヘルパーで `worker/dist/worker.bundle.js` を
-`worker/bindings.json` と一緒にデプロイ（cron は毎分）。
+`worker/bindings.json` と一緒にデプロイ（cron は2分間隔、`*/2 * * * *`）。
 
 価格はプール比率からの推定値で、約定価格の保証ではない。
 
@@ -79,6 +79,9 @@ execution prices. MIT licensed.
 
 ## 変更履歴
 
+- 2026-11-24: 価格キャッシュの更新間隔を毎分から2分間隔に変更（オーナー承認）。
+  KV 書き込みは価格 720件/日＋Blockscout リスト約144件/日で合計 約864件/日となり、
+  無料枠（1,000件/日）の内側に収まる。フェッチ側の自己修復しきい値も2分→3分に調整。
 - 2026-11-24: キャッシュ Worker の KV 書き込み削減（監査対応）。cron 成功時の
   `debug:cron` 記録を廃止し、失敗時のみ記録（同一失敗は1時間に1回まで）に変更。
   価格キャッシュ自体の更新間隔（毎分）は不変。

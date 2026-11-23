@@ -6,9 +6,9 @@ name = "ql1-token-prices"
 main = "dist/worker.bundle.js"
 compatibility_date = "2024-11-01"
 
-# Refresh the cached price dataset every minute.
+# Refresh the cached price dataset every two minutes.
 [triggers]
-crons = ["* * * * *"]
+crons = ["*/2 * * * *"]
 
 [[kv_namespaces]]
 binding = "PRICES_KV"
