@@ -651,7 +651,7 @@ function tokenRowHtml(t, idx) {
     (t.diverge ? '<span class="badge div">' + L("badgeDiverge") + "</span>" : "") +
     (t.liqUsd != null && t.liqUsd < 50 ? '<span class="badge lowliq">' + L("badgeLowLiq") + "</span>" : "");
   const icon = t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" loading="lazy" onerror="this.remove()">' : "";
-  return '<tr class="tok" data-addr="' + t.address + '"><td class="rank">' + (idx + 1) + "</td>" +
+  return '<tr class="tok" data-addr="' + esc(t.address) + '"><td class="rank">' + (idx + 1) + "</td>" +
     '<td class="tok-head">' + icon + '<span class="sym">' + esc(t.symbol) + "</span>" + badges + '<br><span class="tname">' + esc(t.name) + "</span></td>" +
     '<td class="num" data-label="' + L("colPriceUsd") + '" title="' + fmtFull(t.priceUsd) + '">' + fmtPrice(t.priceUsd) + "</td>" +
     '<td class="num" data-label="' + L("colPriceQom") + '">' + fmtNum(t.priceQom) + " QOM</td>" +
@@ -664,8 +664,8 @@ function tokenRowHtml(t, idx) {
 function detailLines(t) {
   const a = DATA.anchors;
   const lines = [];
-  lines.push(L("detailAddress") + t.address + '　<a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">' + L("detailOpenExplorer") + "</a>");
-  if (t.pair) lines.push(L("detailPool") + t.pair + '　<a href="' + SCAN + "/address/" + t.pair + '" target="_blank" rel="noopener">' + L("detailOpenPool") + "</a>");
+  lines.push(L("detailAddress") + esc(t.address) + '　<a href="' + SCAN + "/token/" + esc(t.address) + '" target="_blank" rel="noopener">' + L("detailOpenExplorer") + "</a>");
+  if (t.pair) lines.push(L("detailPool") + esc(t.pair) + '　<a href="' + SCAN + "/address/" + esc(t.pair) + '" target="_blank" rel="noopener">' + L("detailOpenPool") + "</a>");
   if (t.reserveKnown != null && t.reserveToken != null) lines.push(L("detailReserves", fmtNum(t.reserveToken), esc(t.symbol), fmtNum(t.reserveKnown), esc(t.via || "")));
   if (t.via === "WQOM" && a.divergence) lines.push(L("detailAve", fmtPrice(t.priceUsd * a.divergence), a.divergence.toFixed(2)));
   if (t.diverge) {
@@ -774,9 +774,9 @@ function renderUnpriced() {
   body.innerHTML = DATA.unpriced.slice(0, 300).map((t) =>
     "<tr><td>" + (t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" loading="lazy" onerror="this.remove()">' : "") +
     '<span class="sym">' + esc(t.symbol || "?") + '</span> <span class="tname">' + esc(t.name || "") + "</span>" +
-    ' <a href="#" class="trackUnpriced" data-addr="' + t.address + '">' + L("trackLink") + "</a></td>" +
+    ' <a href="#" class="trackUnpriced" data-addr="' + esc(t.address) + '">' + L("trackLink") + "</a></td>" +
     '<td class="num">' + (t.holders != null ? t.holders.toLocaleString() : "—") + "</td>" +
-    '<td><a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></td></tr>").join("");
+    '<td><a href="' + SCAN + "/token/" + esc(t.address) + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></td></tr>").join("");
   body.querySelectorAll(".trackUnpriced").forEach((a) => a.addEventListener("click", (ev) => { ev.preventDefault(); addTracked(a.dataset.addr); }));
 }
 function renderAll() { renderAnchors(); renderTable(); renderUnpriced(); renderTracked(); }
@@ -935,14 +935,14 @@ function renderTracked() {
     (valued ? L("pfDetail", valued, DATA ? fmtNum(total / DATA.anchors.qomUsd) : "—") : "") +
     (unpriced ? L("pfUnpriced", unpriced) : "");
   cards.innerHTML = entries.map(({ t, amount, value }) =>
-    '<div class="tcard" data-addr="' + t.address + '">' +
+    '<div class="tcard" data-addr="' + esc(t.address) + '">' +
     '<div class="t-sym">' + (t.icon ? '<img class="icon" src="' + esc(t.icon) + '" alt="" onerror="this.remove()">' : "") + esc(t.symbol || "?") +
     (t.isLP ? '<span class="badge lp">LP</span>' : "") + (t.diverge ? '<span class="badge div">' + L("badgeDivergeShort") + "</span>" : "") + "</div>" +
     '<div class="t-line">' + esc(t.name || "") + "</div>" +
     '<div class="t-price">' + (t.priceUsd != null ? fmtPrice(t.priceUsd) : L("cardNoPrice")) + "</div>" +
     '<div class="t-line">' + L("cardMcapLiq", fmtMoney(t.mcap), t.liqUsd != null ? fmtMoney(t.liqUsd) : "—") + "<br>" +
     esc(locRoute(t.route || "")) + "<br>" +
-    '<a href="' + SCAN + "/token/" + t.address + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></div>" +
+    '<a href="' + SCAN + "/token/" + esc(t.address) + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></div>" +
     '<label class="t-line">' + L("cardAmountLabel") + '<input class="amount" type="number" min="0" step="any" placeholder="' + L("cardAmountPh") + '" value="' + esc(amount) + '"></label>' +
     '<div class="t-value">' + (value != null ? L("cardValue", fmtMoney(value), fmtFull(value)) : "") + "</div>" +
     (t.priceUsd != null ? '<button type="button" class="t-conv">' + L("cardConvBtn") + "</button>" : "") +
