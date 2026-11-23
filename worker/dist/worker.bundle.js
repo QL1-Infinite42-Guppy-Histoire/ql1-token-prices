@@ -354,10 +354,26 @@ function jsonResponse(o, status) {
   });
 }
 
+/* KV write budget: debug records are written on failures only
+   (successes are visible via /status freshness), and a repeated
+   identical failure is recorded at most once per hour. Routine cron
+   debug bookkeeping therefore costs ~0 writes/day instead of one
+   write per minute. */
+const DEBUG_REPEAT_MS = 60 * 60 * 1000;
+
 async function recordDebug(env, key, ok, err) {
+  const errStr = err ? String((err && err.message) || err) : null;
   try {
+    if (!ok) {
+      const prevRaw = await env.PRICES_KV.get("debug:" + key);
+      if (prevRaw) {
+        const prev = JSON.parse(prevRaw);
+        if (prev && prev.ok === false && prev.err === errStr &&
+            Date.now() - new Date(prev.at).getTime() < DEBUG_REPEAT_MS) return;
+      }
+    }
     await env.PRICES_KV.put("debug:" + key, JSON.stringify({
-      at: new Date().toISOString(), ok, err: err ? String((err && err.message) || err) : null,
+      at: new Date().toISOString(), ok, err: errStr,
     }));
   } catch (e) { /* debug only */ }
 }
@@ -365,7 +381,9 @@ async function recordDebug(env, key, ok, err) {
 export default {
   async scheduled(event, env, ctx) {
     ctx.waitUntil((async () => {
-      try { await refresh(env); await recordDebug(env, "cron", true, null); }
+      /* Successes are not recorded (KV write budget — see recordDebug);
+         /status freshness is the success signal. */
+      try { await refresh(env); }
       catch (e) { await recordDebug(env, "cron", false, e); }
     })());
   },
