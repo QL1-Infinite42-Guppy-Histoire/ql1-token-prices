@@ -102,7 +102,7 @@ async function settle(els) {
   check("en countLine is English", en.els.countLine.textContent.indexOf("Showing 3 of 3 priced tokens") === 0, en.els.countLine.textContent.slice(0, 60));
   check("en row labels English", en.els.tokenBody.innerHTML.includes('data-label="Price (USD)"') && en.els.tokenBody.innerHTML.includes('data-label="Market cap"') && en.els.tokenBody.innerHTML.includes('data-label="Route"'));
   check("en snapshot route translated in table", en.els.tokenBody.innerHTML.includes("LP-backed (BABY/WQOM)") && en.els.tokenBody.innerHTML.includes("Infinite anchor"));
-  check("en badges English", en.els.tokenBody.innerHTML.includes("⚠ Route divergence") && !en.els.tokenBody.innerHTML.includes("⚠ルート乖離"));
+  check("en badges English", en.els.tokenBody.innerHTML.includes("⚠ Route divergence") && !en.els.tokenBody.innerHTML.includes("⚠ルートかい離"));
   check("en unpriced summary English", en.els.unpricedSummary.textContent === "Tokens without a price (1)", en.els.unpricedSummary.textContent);
   check("en anchor notes English", /cross-check/i.test(en.els.fishNote.textContent) && /Ave\.ai prices every token/.test(en.els.divNote.textContent));
 
