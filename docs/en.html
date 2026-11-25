@@ -49,7 +49,7 @@
     <summary>How prices are calculated & caveats</summary>
     <ul>
       <li>The QOM price is tracked on the 42 Chain side: the <b>QOM/42 pool</b> ratio × the 42 price from the <b>42/USDT pool</b>. It is also cross-checked through a second route (FISH/USDT × FISH/QOM) every time, to make sure the two are not far apart.</li>
-      <li>Each QL1 token's price uses, out of all 645 QomSwap pairs (fetched in full from the factory), the <b>direct pair against an anchor token (WQOM / qUSDT / qUSDC / qDAI)</b> with the deepest anchor-side liquidity. Pools with less than $0.5 of anchor-side liquidity are treated as "no liquidity" and get no price.</li>
+      <li>Each QL1 token's price uses, out of all <span id="pairCount">645</span> QomSwap pairs (fetched in full from the factory), the <b>direct pair against an anchor token (WQOM / qUSDT / qUSDC / qDAI)</b> with the deepest anchor-side liquidity. Pools with less than $0.5 of anchor-side liquidity are treated as "no liquidity" and get no price.</li>
       <li>Exception: <b>qCAW is priced from its WQOM pool</b>, its main pool. When other routes differ by more than 3x, the breakdown is shown under the divergence badge.</li>
       <li>WQOM uses the QOM price above; qUSDT / qUSDC / qDAI are fixed at $1. When a token has two routes and the prices differ by more than 3×, it is flagged "⚠ Route divergence".</li>
       <li>Market cap = price × total supply (FDV style). The total supply of bridged tokens (such as qUSDT) may include a mint cap, in which case the market cap reads larger than reality.</li>

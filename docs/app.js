@@ -779,7 +779,11 @@ function renderUnpriced() {
     '<td><a href="' + SCAN + "/token/" + esc(t.address) + '" target="_blank" rel="noopener">' + shortAddr(t.address) + "</a></td></tr>").join("");
   body.querySelectorAll(".trackUnpriced").forEach((a) => a.addEventListener("click", (ev) => { ev.preventDefault(); addTracked(a.dataset.addr); }));
 }
-function renderAll() { renderAnchors(); renderTable(); renderUnpriced(); renderTracked(); }
+function renderPairCount() {
+  const el = document.getElementById("pairCount");
+  if (el && DATA && DATA.stats && DATA.stats.ql1Pairs != null) el.textContent = String(DATA.stats.ql1Pairs);
+}
+function renderAll() { renderAnchors(); renderTable(); renderUnpriced(); renderTracked(); renderPairCount(); }
 
 /* ---------- instant CA lookup ---------- */
 async function lookupToken(address) {
